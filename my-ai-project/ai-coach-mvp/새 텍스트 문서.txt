@@ -1,0 +1,6 @@
+module.exports = {
+  plugins: {
+    '@tailwindcss/postcss': {}, // tailwindcss 대신 이걸 넣어야 합니다!
+    autoprefixer: {},
+  },
+}
