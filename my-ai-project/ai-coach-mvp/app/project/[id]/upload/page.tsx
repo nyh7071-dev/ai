@@ -11,12 +11,17 @@ export default function UploadPage() {
     setLoading(true);
     setStatus("📡 AI가 분석을 시작했습니다..."); // 박스 글자 바뀜
     setResult("");
+    const subject = "동물질병학";
+    const assertion = "레포트 초안";
 
     try {
       const response = await fetch("/api/generate", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ subject: "동물질병학", assertion: "레포트 초안" }),
+        body: JSON.stringify({
+          prompt: `${subject} 과목의 ${assertion}를 작성해 주세요.`,
+          type: assertion,
+        }),
       });
 
       const data = await response.json();
