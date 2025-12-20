@@ -10,6 +10,9 @@ const openai = new OpenAI({
 export async function POST(req: Request) {
   try {
     const { prompt, type } = await req.json();
+    if (!prompt || !type) {
+      return NextResponse.json({ error: "요청 데이터가 올바르지 않습니다." }, { status: 400 });
+    }
 
     const completion = await openai.chat.completions.create({
       model: "gpt-4o-mini", // 또는 gpt-3.5-turbo
