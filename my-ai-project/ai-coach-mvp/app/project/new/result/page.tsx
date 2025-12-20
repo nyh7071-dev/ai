@@ -2,7 +2,7 @@
 
 import { Suspense, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
-import { loadTemplateFromIDB, saveTemplateToIDB } from "@/lib/templateStore";
+import { getTemplateFromIDB, saveTemplateToIDB } from "@/lib/templateStore";
 
 type TemplateType = "레포트" | "실험보고서" | "논문" | "강의노트" | "문헌고찰";
 type ChatMsg = { role: "ai" | "user"; text: string };
@@ -96,7 +96,7 @@ function Workspace() {
         let buf: ArrayBuffer;
 
         if (activeTemplateId) {
-          const rec = await loadTemplateFromIDB(activeTemplateId);
+          const rec = await getTemplateFromIDB(activeTemplateId);
           if (!rec?.buffer) throw new Error("IDB에서 DOCX 템플릿을 찾지 못했습니다.");
           buf = rec.buffer;
         } else {
