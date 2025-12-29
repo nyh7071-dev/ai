@@ -15,6 +15,44 @@ const TYPE_TO_DEFAULT_DOCX: Record<TemplateType, string> = {
   문헌고찰: "review",
 };
 
+const IFRAME_SRC_DOC = [
+  "<!DOCTYPE html>",
+  "<html>",
+  "<head>",
+  '  <meta charset="utf-8"/>',
+  "  <style>",
+  "    body { margin:0; background:#eef2f6; }",
+  "    #page { width: 850px; min-height: 1100px; margin: 24px auto; background: white; box-shadow: 0 10px 30px rgba(0,0,0,0.12); border-radius: 8px; overflow: hidden; }",
+  "    #editor { padding: 80px 90px; font-family: 'Malgun Gothic', sans-serif; line-height: 1.8; font-size: 15px; color:#111; outline: none; min-height: 1100px; }",
+  "  </style>",
+  "</head>",
+  "<body>",
+  '  <div id="page">',
+  '    <div id="editor" contenteditable="true" spellcheck="false">양식을 불러오는 중...</div>',
+  "  </div>",
+  "",
+  "  <script>",
+  "    const editor = document.getElementById('editor');",
+  "    window.parent.postMessage({ __editor:true, type:'FRAME_READY' }, '*');",
+  "",
+  "    let t = null;",
+  "    editor.addEventListener('input', () => {",
+  "      clearTimeout(t);",
+  "      t = setTimeout(() => {",
+  "        window.parent.postMessage({ __editor:true, type:'EDIT_HTML', html: editor.innerHTML }, '*');",
+  "      }, 250);",
+  "    });",
+  "",
+  "    window.addEventListener('message', (ev) => {",
+  "      const d = ev.data;",
+  "      if (!d || !d.__editor) return;",
+  "      if (d.type === 'SET_HTML') editor.innerHTML = d.html || \"\";",
+  "    });",
+  "  </script>",
+  "</body>",
+  "</html>",
+].join("\n");
+
 export default function ResultPage() {
   return (
     <Suspense fallback={<div style={{ padding: 20 }}>로딩 중...</div>}>
@@ -177,47 +215,7 @@ function Workspace() {
     e.currentTarget.value = "";
   }, []);
 
-  const iframeSrcDoc = useMemo(
-    () =>
-      [
-        "<!DOCTYPE html>",
-        "<html>",
-        "<head>",
-        '  <meta charset="utf-8"/>',
-        "  <style>",
-        "    body { margin:0; background:#eef2f6; }",
-        "    #page { width: 850px; min-height: 1100px; margin: 24px auto; background: white; box-shadow: 0 10px 30px rgba(0,0,0,0.12); border-radius: 8px; overflow: hidden; }",
-        "    #editor { padding: 80px 90px; font-family: 'Malgun Gothic', sans-serif; line-height: 1.8; font-size: 15px; color:#111; outline: none; min-height: 1100px; }",
-        "  </style>",
-        "</head>",
-        "<body>",
-        '  <div id="page">',
-        '    <div id="editor" contenteditable="true" spellcheck="false">양식을 불러오는 중...</div>',
-        "  </div>",
-        "",
-        "  <script>",
-        "    const editor = document.getElementById('editor');",
-        "    window.parent.postMessage({ __editor:true, type:'FRAME_READY' }, '*');",
-        "",
-        "    let t = null;",
-        "    editor.addEventListener('input', () => {",
-        "      clearTimeout(t);",
-        "      t = setTimeout(() => {",
-        "        window.parent.postMessage({ __editor:true, type:'EDIT_HTML', html: editor.innerHTML }, '*');",
-        "      }, 250);",
-        "    });",
-        "",
-        "    window.addEventListener('message', (ev) => {",
-        "      const d = ev.data;",
-        "      if (!d || !d.__editor) return;",
-        "      if (d.type === 'SET_HTML') editor.innerHTML = d.html || \"\";",
-        "    });",
-        "  </script>",
-        "</body>",
-        "</html>",
-      ].join("\n"),
-    []
-  );
+  const iframeSrcDoc = useMemo(() => IFRAME_SRC_DOC, []);
 
   return (
     <div style={{ display: "flex", width: "100vw", height: "100vh", background: "#f3f4f6" }}>
