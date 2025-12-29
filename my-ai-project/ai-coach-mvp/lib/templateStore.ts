@@ -17,13 +17,22 @@ interface TemplateDB extends DBSchema {
 const DB_NAME = "repot-templates";
 const STORE = "templates";
 
-const dbPromise = openDB<TemplateDB>(DB_NAME, 1, {
-  upgrade(db) {
-    if (!db.objectStoreNames.contains(STORE)) {
-      db.createObjectStore(STORE, { keyPath: "id" });
-    }
-  },
-});
+let dbPromise: Promise<ReturnType<typeof openDB<TemplateDB>>> | null = null;
+
+function getDb() {
+  if (dbPromise) return dbPromise;
+  if (typeof window === "undefined" || !("indexedDB" in globalThis)) {
+    throw new Error("IndexedDB를 사용할 수 없는 환경입니다.");
+  }
+  dbPromise = openDB<TemplateDB>(DB_NAME, 1, {
+    upgrade(db) {
+      if (!db.objectStoreNames.contains(STORE)) {
+        db.createObjectStore(STORE, { keyPath: "id" });
+      }
+    },
+  });
+  return dbPromise;
+}
 
 function makeId() {
   // 브라우저 호환 (crypto.randomUUID 없을 때 대비)
@@ -34,13 +43,13 @@ function makeId() {
 }
 
 export async function saveTemplateToIDB(name: string, buffer: ArrayBuffer) {
-  const db = await dbPromise;
+  const db = await getDb();
   const id = makeId();
   await db.put(STORE, { id, name, buffer, createdAt: Date.now() });
   return id;
 }
 
 export async function getTemplateFromIDB(id: string) {
-  const db = await dbPromise;
+  const db = await getDb();
   return db.get(STORE, id);
 }

@@ -1,65 +1,214 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useRef } from "react";
+import { useRouter } from "next/navigation";
 
-export default function UploadPage() {
-  const [loading, setLoading] = useState(false);
-  const [result, setResult] = useState("");
-  const [status, setStatus] = useState("준비 완료"); // <-- 이게 박스에 들어갈 글자
+export default function MainUploadPage() {
+  const router = useRouter();
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
-  const handleUpload = async () => {
-    setLoading(true);
-    setStatus("📡 AI가 분석을 시작했습니다..."); // 박스 글자 바뀜
-    setResult("");
+  const [selectedName, setSelectedName] = useState("레포트");
+  const [selectedPdf, setSelectedPdf] = useState("/templates/report.pdf");
+  const [uploadedFile, setUploadedFile] = useState<File | null>(null);
 
-    try {
-      const response = await fetch("/api/generate", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ subject: "동물질병학", assertion: "레포트 초안" }),
-      });
+  const categories = [
+    { name: "레포트", icon: "📄", file: "/templates/report.pdf" },
+    { name: "실험보고서", icon: "🧪", file: "/templates/lab_report.pdf" },
+    { name: "논문", icon: "🎓", file: "/templates/thesis.pdf" },
+    { name: "강의노트", icon: "📝", file: "/templates/lecture_note.pdf" },
+    { name: "문헌고찰", icon: "📚", file: "/templates/review.pdf" },
+    { name: "내 양식 업로드", icon: "➕", file: "custom" },
+  ];
 
-      const data = await response.json();
-      
-      if (!response.ok) {
-        setStatus(`❌ 에러 발생: ${data.error}`); // 에러나면 박스에 빨간색으로 뜸
-        return;
-      }
+  const handleCardClick = (cat: any) => {
+    setSelectedName(cat.name);
+    setUploadedFile(null);
 
-      setResult(data.result);
-      setStatus("✅ 분석이 완료되었습니다!");
-    } catch (e: any) {
-      setStatus(`❌ 연결 실패: ${e.message}`);
-    } finally {
-      setLoading(false);
+    if (cat.file === "custom") {
+      fileInputRef.current?.click();
+    } else {
+      setSelectedPdf(cat.file);
     }
   };
 
+  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file && file.type === "application/pdf") {
+      setUploadedFile(file);
+      const fileUrl = URL.createObjectURL(file);
+      setSelectedPdf(fileUrl);
+      setSelectedName(file.name.replace(/\.pdf$/, ""));
+    } else if (file) {
+      alert("PDF 파일만 업로드 가능합니다.");
+    }
+  };
+
+  const handleAnalyzeClick = () => {
+    // 선택한 양식 이름을 URL 파라미터로 넘깁니다.
+    router.push(`/project/new/result?type=${encodeURIComponent(selectedName)}`);
+  };
+
   return (
-    <div className="flex flex-col items-center justify-center min-h-screen bg-gray-100 p-6">
-      <div className="bg-white p-10 rounded-3xl shadow-xl w-full max-w-lg">
-        <h1 className="text-2xl font-bold mb-6 text-center">AI 분석 코치</h1>
-        
-        {/* 👇 이게 바로 제가 말한 '검은 박스' 코드입니다! */}
-        <div className="mb-6 p-4 bg-black text-green-400 font-mono text-center rounded-xl border-4 border-gray-700">
-          {status}
-        </div>
-
-        <button
-          onClick={handleUpload}
-          disabled={loading}
-          className="w-full py-4 bg-blue-600 text-white rounded-xl font-bold text-lg hover:bg-blue-700 disabled:bg-gray-400"
+    <div
+      style={{
+        display: "flex",
+        height: "100vh",
+        backgroundColor: "#f3f4f6",
+        fontFamily: "sans-serif",
+        overflow: "hidden",
+      }}
+    >
+      <aside
+        style={{
+          width: "260px",
+          backgroundColor: "white",
+          borderRight: "1px solid #e5e7eb",
+          display: "flex",
+          flexDirection: "column",
+          padding: "30px 20px",
+          flexShrink: 0,
+        }}
+      >
+        <div
+          style={{
+            color: "#2563eb",
+            fontWeight: "900",
+            fontStyle: "italic",
+            fontSize: "22px",
+            marginBottom: "40px",
+          }}
         >
-          {loading ? "분석 중..." : "AI 초안 생성 시작"}
-        </button>
-
-        {result && (
-          <div className="mt-8 p-6 bg-blue-50 border border-blue-200 rounded-xl text-gray-800">
-            <h2 className="font-bold mb-2">✨ AI 분석 결과</h2>
-            <div className="whitespace-pre-wrap">{result}</div>
+          REPOT AI
+        </div>
+        <nav style={{ flex: 1 }}>
+          <div
+            style={{
+              padding: "12px 16px",
+              backgroundColor: "#eff6ff",
+              color: "#2563eb",
+              borderRadius: "12px",
+              fontWeight: "bold",
+              marginBottom: "8px",
+            }}
+          >
+            📂 문서
           </div>
-        )}
-      </div>
+          <div style={{ padding: "12px 16px", color: "#9ca3af", borderRadius: "12px", cursor: "pointer" }}>
+            💬 ChatGPT
+          </div>
+        </nav>
+      </aside>
+
+      <main style={{ flex: 1, padding: "20px 40px", display: "flex", flexDirection: "column", overflow: "hidden" }}>
+        <h2 style={{ fontSize: "24px", fontWeight: "bold", marginBottom: "20px", color: "#111827" }}>
+          문서 종류 선택
+        </h2>
+        <div style={{ display: "flex", gap: "25px", flex: 1, minHeight: 0 }}>
+          <div
+            style={{
+              flex: 1,
+              display: "flex",
+              flexDirection: "column",
+              backgroundColor: "white",
+              padding: "25px",
+              borderRadius: "32px",
+              border: "1px solid #e5e7eb",
+              overflow: "hidden",
+            }}
+          >
+            <div
+              style={{
+                display: "grid",
+                gridTemplateColumns: "repeat(2, 1fr)",
+                gap: "15px",
+                overflowY: "auto",
+                flex: 1,
+                paddingRight: "5px",
+                marginBottom: "20px",
+              }}
+            >
+              {categories.map((cat) => (
+                <div
+                  key={cat.name}
+                  onClick={() => handleCardClick(cat)}
+                  style={{
+                    height: "130px",
+                    borderRadius: "24px",
+                    cursor: "pointer",
+                    display: "flex",
+                    flexDirection: "column",
+                    alignItems: "center",
+                    justifyContent: "center",
+                    border: selectedName === cat.name ? "2px solid #2563eb" : "1px solid #f3f4f6",
+                    backgroundColor: selectedName === cat.name ? "white" : "#f9fafb",
+                  }}
+                >
+                  <span style={{ fontSize: "36px", marginBottom: "8px" }}>{cat.icon}</span>
+                  <span
+                    style={{
+                      fontWeight: "bold",
+                      color: selectedName === cat.name ? "#2563eb" : "#6b7280",
+                    }}
+                  >
+                    {cat.name}
+                  </span>
+                </div>
+              ))}
+            </div>
+            <input type="file" ref={fileInputRef} style={{ display: "none" }} accept="application/pdf" onChange={handleFileChange} />
+            <button
+              onClick={handleAnalyzeClick}
+              style={{
+                width: "100%",
+                padding: "20px",
+                backgroundColor: "#2563eb",
+                color: "white",
+                border: "none",
+                borderRadius: "20px",
+                fontSize: "18px",
+                fontWeight: "bold",
+                cursor: "pointer",
+                boxShadow: "0 10px 25px rgba(37, 99, 235, 0.3)",
+              }}
+            >
+              이 양식으로 분석 시작하기
+            </button>
+          </div>
+
+          <div
+            style={{
+              flex: 1,
+              backgroundColor: "white",
+              borderRadius: "32px",
+              border: "1px solid #e5e7eb",
+              padding: "8px",
+              display: "flex",
+              flexDirection: "column",
+            }}
+          >
+            <div
+              style={{
+                flex: 1,
+                backgroundColor: "#f3f4f6",
+                borderRadius: "26px",
+                overflow: "hidden",
+                border: "1px solid #eee",
+                display: "flex",
+              }}
+            >
+              <iframe
+                key={selectedPdf}
+                src={`${selectedPdf}#toolbar=0&navpanes=0&view=FitH`}
+                style={{ width: "100%", height: "100%", border: "none" }}
+              />
+            </div>
+            <div style={{ padding: "10px 0 8px", textAlign: "center" }}>
+              <span style={{ fontSize: "11px", color: "#9ca3af", fontWeight: "bold" }}>미리보기: </span>
+              <span style={{ fontSize: "16px", color: "#2563eb", fontWeight: "bold" }}>{selectedName}</span>
+            </div>
+          </div>
+        </div>
+      </main>
     </div>
   );
 }
