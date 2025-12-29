@@ -215,6 +215,8 @@ function Workspace() {
     e.currentTarget.value = "";
   }, []);
 
+const iframeSrcDoc = useMemo(() => IFRAME_SRC_DOC, []);
+
   return (
     <div style={{ display: "flex", width: "100vw", height: "100vh", background: "#f3f4f6" }}>
       <aside style={{ width: 380, background: "#fff", borderRight: "1px solid #ddd", display: "flex", flexDirection: "column" }}>
