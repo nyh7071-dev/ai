@@ -2,6 +2,7 @@
 
 import { Suspense, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
+import * as mammoth from "mammoth/mammoth.browser";
 import { getTemplateFromIDB, saveTemplateToIDB } from "@/lib/templateStore";
 
 type TemplateType = "레포트" | "실험보고서" | "논문" | "강의노트" | "문헌고찰";
@@ -15,63 +16,51 @@ const TYPE_TO_DEFAULT_DOCX: Record<TemplateType, string> = {
   문헌고찰: "review",
 };
 
+
 export default function ResultPage() {
   return (
-    <Suspense fallback={<div style={{ padding: 20 }}>로딩 중...</div>}>
+    <Suspense fallback={<div className="p-10 text-center text-gray-500">워크스페이스 준비 중...</div>}>
       <Workspace />
     </Suspense>
   );
 }
 
 function Workspace() {
-  const router = useRouter();
-  const sp = useSearchParams();
-
-  const type = (sp.get("type") || "레포트") as TemplateType;
-  const templateIdFromUrl = sp.get("templateId") || "";
-
-  const [activeTemplateId, setActiveTemplateId] = useState(templateIdFromUrl);
-  useEffect(() => setActiveTemplateId(templateIdFromUrl), [templateIdFromUrl]);
-
+  const searchParams = useSearchParams();
   const iframeRef = useRef<HTMLIFrameElement>(null);
-
   const [frameReady, setFrameReady] = useState(false);
   const [docHTML, setDocHTML] = useState<string>("");
   const [loadError, setLoadError] = useState<string | null>(null);
   const [loadingMessage, setLoadingMessage] = useState<string | null>(null);
+
   const [messages, setMessages] = useState<ChatMsg[]>([
     { role: "ai", text: "DOCX 템플릿 로딩 후, PDF 업로드로 자동 채움이 가능합니다." },
   ]);
+
   const [isLoading, setIsLoading] = useState(false);
 
+  // 같은 템플릿을 중복 로드/중복 postMessage 하지 않게 막는 키
   const loadedKeyRef = useRef<string>("");
+
 
   const sendHtmlToIframe = useCallback((html: string) => {
     const w = iframeRef.current?.contentWindow;
-    if (!w) return;
-    w.postMessage({ __editor: true, type: "SET_HTML", html }, "*");
+    if (w) w.postMessage({ __editor: true, type: "SET_HTML", html }, "*");
   }, []);
 
   const normalizeTemplateHTML = (html: string) => {
-    let s = (html || "")
+    return (html || "")
       .replace(/&lcub;/g, "{")
       .replace(/&rcub;/g, "}")
-      .replace(/\u00a0/g, " ");
-    s = s.replace(/\u0000/g, "");
-    return s;
+      .replace(/\u00a0/g, " ")
+      .replace(/\u0000/g, "");
   };
 
-  const loadDocxArrayBufferToHtml = useCallback(async (arrayBuffer: ArrayBuffer) => {
-    // mammoth는 동적 import가 안전합니다.
-    const mammoth = await import("mammoth");
-    const result = await mammoth.convertToHtml({ arrayBuffer });
-    return normalizeTemplateHTML(result.value || "").trim();
-  }, []);
-
+  // 2. 동적 템플릿 로드 로직
   useEffect(() => {
-    const onMessage = (ev: MessageEvent) => {
-      if (ev.source !== iframeRef.current?.contentWindow) return;
-      if (!ev.data?.__editor) return;
+    const loadTemplate = async () => {
+      // URL에서 ?type=... 값을 읽어옴 (없으면 기본값 '레포트')
+      const typeParam = searchParams.get("type") || "레포트";
 
       if (ev.data.type === "FRAME_READY") setFrameReady(true);
       if (ev.data.type === "EDIT_HTML") setDocHTML(String(ev.data.html || ""));
@@ -107,8 +96,12 @@ function Workspace() {
           buf = await res.arrayBuffer();
         }
 
-        const html = await loadDocxArrayBufferToHtml(buf);
-        if (!html) throw new Error("DOCX 변환 결과가 비어있습니다.");
+        // (이 아래는 원래 파일에 있던 "mammoth 변환 → setDocHTML → iframe 반영" 코드가 이어져야 정상입니다.)
+
+
+        const arrayBuffer = await res.arrayBuffer();
+        const result = await mammoth.convertToHtml({ arrayBuffer });
+        const initial = normalizeTemplateHTML(result.value);
 
         setDocHTML(html);
         sendHtmlToIframe(html);
@@ -134,82 +127,73 @@ function Workspace() {
         setMessages((prev) => [...prev, { role: "ai", text: "템플릿 적용 실패. 콘솔(F12) 확인." }]);
       } finally {
         setIsLoading(false);
+
       }
     };
 
-    run();
-  }, [frameReady, type, activeTemplateId, loadDocxArrayBufferToHtml, sendHtmlToIframe]);
+    if (frameReady) loadTemplate();
+  }, [frameReady, searchParams]); // 파라미터가 바뀌면 자동으로 다시 실행됨
 
-  const onUploadDocxTemplateHere = useCallback(
-    async (e: React.ChangeEvent<HTMLInputElement>) => {
-      const file = e.target.files?.[0];
-      if (!file) return;
-
-      setIsLoading(true);
-      setMessages((prev) => [...prev, { role: "ai", text: "DOCX 업로드 템플릿 적용 중..." }]);
-
-      try {
-        const buf = await file.arrayBuffer();
-        const newId = await saveTemplateToIDB(file.name, buf);
-
-        setActiveTemplateId(newId);
-        loadedKeyRef.current = ""; // 강제 리로드
-        router.replace(
-          `/project/new/result?type=${encodeURIComponent(type)}&templateId=${encodeURIComponent(newId)}`
-        );
-      } catch (err) {
-        console.error(err);
-        setMessages((prev) => [...prev, { role: "ai", text: "DOCX 업로드/저장 실패. 콘솔(F12) 확인." }]);
-      } finally {
-        e.currentTarget.value = "";
-        setIsLoading(false);
-      }
-    },
-    [router, type]
-  );
-
-  // PDF 업로드는 네 기존 자동채움 로직을 여기 붙이면 됩니다.
-  const onUploadPdf = useCallback(async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
-
-    setMessages((prev) => [...prev, { role: "ai", text: `PDF 업로드됨: ${file.name}` }]);
-    e.currentTarget.value = "";
+  useEffect(() => {
+    const onMessage = (ev: MessageEvent) => {
+      if (ev.data?.type === "FRAME_READY") setFrameReady(true);
+      if (ev.data?.type === "EDIT_HTML") setDocHTML(ev.data.html);
+    };
+    window.addEventListener("message", onMessage);
+    return () => window.removeEventListener("message", onMessage);
   }, []);
 
-  const iframeSrcDoc = useMemo(() => {
-    return `
+  return (
+    <div className="flex w-screen h-screen bg-[#f3f4f6] overflow-hidden">
+      {/* 좌측 사이드바 */}
+      <aside className="w-[380px] bg-white border-r border-gray-200 flex flex-col shadow-xl z-10">
+        <div className="p-6 bg-[#1e40af] text-white font-bold text-lg tracking-tight">AI WORD EDITOR</div>
+        <div className="flex-1 overflow-y-auto p-6 space-y-4">
+          <div className="p-4 bg-blue-50 border border-blue-100 rounded-2xl">
+            <p className="text-xs text-blue-600 font-bold uppercase tracking-widest mb-1">
+              Current Template
+            </p>
+            <p className="text-lg font-black text-blue-900">{searchParams.get("type") || "레포트"}</p>
+          </div>
+          <div className="p-5 bg-gray-50 rounded-2xl text-sm text-gray-600 leading-relaxed border border-gray-100">
+            선택하신 <span className="font-bold text-blue-600">[{searchParams.get("type") || "레포트"}]</span>{" "}
+            양식을 불러왔습니다. <br />작성을 시작해볼까요?
+          </div>
+        </div>
+      </aside>
+
+      {/* 우측 에디터 메인 */}
+      <main className="flex-1 p-6 relative flex flex-col">
+        <iframe
+          ref={iframeRef}
+          srcDoc={EDITOR_HTML}
+          className="w-full h-full border-none rounded-2xl shadow-2xl bg-white"
+        />
+      </main>
+    </div>
+  );
+}
+
+// 에디터 엔진 (Iframe 내부)
+const EDITOR_HTML = `
 <!DOCTYPE html>
 <html>
 <head>
-  <meta charset="utf-8"/>
   <style>
-    body { margin:0; background:#eef2f6; }
-    #page { width: 850px; min-height: 1100px; margin: 24px auto; background: white; box-shadow: 0 10px 30px rgba(0,0,0,0.12); border-radius: 8px; overflow: hidden; }
-    #editor { padding: 80px 90px; font-family: 'Malgun Gothic', sans-serif; line-height: 1.8; font-size: 15px; color:#111; outline: none; min-height: 1100px; }
+    body { margin:0; background:#f8fafc; padding: 40px; font-family: 'Malgun Gothic', sans-serif; display: flex; justify-content: center; }
+    #editor { background: white; width: 800px; min-height: 1100px; padding: 80px 90px; outline: none; box-shadow: 0 10px 40px rgba(0,0,0,0.05); border-radius: 4px; line-height: 1.8; color: #1e293b; }
   </style>
 </head>
 <body>
-  <div id="page">
-    <div id="editor" contenteditable="true" spellcheck="false">양식을 불러오는 중...</div>
-  </div>
-
+  <div id="editor" contenteditable="true" spellcheck="false">문서를 불러오는 중...</div>
   <script>
     const editor = document.getElementById('editor');
-    window.parent.postMessage({ __editor:true, type:'FRAME_READY' }, '*');
-
-    let t = null;
-    editor.addEventListener('input', () => {
-      clearTimeout(t);
-      t = setTimeout(() => {
-        window.parent.postMessage({ __editor:true, type:'EDIT_HTML', html: editor.innerHTML }, '*');
-      }, 250);
-    });
-
+    window.parent.postMessage({ type: 'FRAME_READY' }, '*');
     window.addEventListener('message', (ev) => {
-      const d = ev.data;
-      if (!d || !d.__editor) return;
-      if (d.type === 'SET_HTML') editor.innerHTML = d.html || "";
+      if (ev.data.type === 'SET_HTML') editor.innerHTML = ev.data.html;
+    });
+    editor.addEventListener('input', () => {
+      window.parent.postMessage({ type: 'EDIT_HTML', html: editor.innerHTML }, '*');
     });
   </script>
 </body>
@@ -312,3 +296,4 @@ function Workspace() {
     </div>
   );
 }
+
