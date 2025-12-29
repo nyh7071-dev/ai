@@ -37,6 +37,8 @@ function Workspace() {
 
   const [frameReady, setFrameReady] = useState(false);
   const [docHTML, setDocHTML] = useState<string>("");
+  const [loadError, setLoadError] = useState<string | null>(null);
+  const [loadingMessage, setLoadingMessage] = useState<string | null>(null);
   const [messages, setMessages] = useState<ChatMsg[]>([
     { role: "ai", text: "DOCX 템플릿 로딩 후, PDF 업로드로 자동 채움이 가능합니다." },
   ]);
@@ -88,9 +90,8 @@ function Workspace() {
 
     const run = async () => {
       setIsLoading(true);
-      const loading = `<div style="font-weight:800;color:#334155;">템플릿 로딩 중...</div>`;
-      setDocHTML(loading);
-      sendHtmlToIframe(loading);
+      setLoadError(null);
+      setLoadingMessage("템플릿 로딩 중...");
 
       try {
         let buf: ArrayBuffer;
@@ -111,6 +112,7 @@ function Workspace() {
 
         setDocHTML(html);
         sendHtmlToIframe(html);
+        setLoadingMessage(null);
 
         setMessages((prev) => [
           ...prev,
@@ -118,13 +120,17 @@ function Workspace() {
         ]);
       } catch (e) {
         console.error(e);
-        const errHtml = `<div style="color:#b91c1c;font-weight:900;">템플릿 적용 실패</div>
-        <div style="margin-top:8px;line-height:1.7;color:#334155;">
-          - DOCX 업로드를 다시 시도하거나<br/>
-          - 콘솔(F12) 에러를 확인하세요.
-        </div>`;
-        setDocHTML(errHtml);
-        sendHtmlToIframe(errHtml);
+        setLoadError("템플릿 적용 실패. DOCX 업로드를 다시 시도하거나 콘솔(F12) 에러를 확인하세요.");
+        setLoadingMessage(null);
+        if (!docHTML) {
+          const errHtml = `<div style="color:#b91c1c;font-weight:900;">템플릿 적용 실패</div>
+            <div style="margin-top:8px;line-height:1.7;color:#334155;">
+              - DOCX 업로드를 다시 시도하거나<br/>
+              - 콘솔(F12) 에러를 확인하세요.
+            </div>`;
+          setDocHTML(errHtml);
+          sendHtmlToIframe(errHtml);
+        }
         setMessages((prev) => [...prev, { role: "ai", text: "템플릿 적용 실패. 콘솔(F12) 확인." }]);
       } finally {
         setIsLoading(false);
@@ -254,7 +260,11 @@ function Workspace() {
             </label>
           </div>
 
-          {isLoading && <div style={{ marginTop: 10, color: "#e11d48", fontWeight: 800 }}>처리 중...</div>}
+          {isLoading && (
+            <div style={{ marginTop: 10, color: "#e11d48", fontWeight: 800 }}>
+              {loadingMessage || "처리 중..."}
+            </div>
+          )}
         </div>
 
         <div style={{ flex: 1, overflowY: "auto", padding: 14, fontSize: 13 }}>
@@ -276,8 +286,28 @@ function Workspace() {
         </div>
       </aside>
 
-      <main style={{ flex: 1, padding: 18 }}>
+      <main style={{ flex: 1, padding: 18, position: "relative" }}>
         <iframe ref={iframeRef} srcDoc={iframeSrcDoc} style={{ width: "100%", height: "100%", border: "none" }} />
+        {(isLoading || loadError) && (
+          <div
+            style={{
+              position: "absolute",
+              inset: 18,
+              background: "rgba(15, 23, 42, 0.35)",
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              padding: 24,
+              borderRadius: 12,
+              color: "#fff",
+              fontWeight: 800,
+              textAlign: "center",
+              pointerEvents: "none",
+            }}
+          >
+            {loadError || loadingMessage || "처리 중..."}
+          </div>
+        )}
       </main>
     </div>
   );
