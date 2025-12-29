@@ -1,12 +1,15 @@
 "use client";
 
 import { useState, useRef } from "react";
-import { useRouter } from "next/navigation"; // 'next/navigation'인지 확인!
+import { useRouter } from "next/navigation";
 
 export default function MainUploadPage() {
   const router = useRouter();
+  const fileInputRef = useRef<HTMLInputElement>(null);
+
   const [selectedName, setSelectedName] = useState("레포트");
   const [selectedPdf, setSelectedPdf] = useState("/templates/report.pdf");
+  const [uploadedFile, setUploadedFile] = useState<File | null>(null);
 
   const categories = [
     { name: "레포트", icon: "📄", file: "/templates/report.pdf" },
@@ -19,59 +22,190 @@ export default function MainUploadPage() {
 
   const handleCardClick = (cat: any) => {
     setSelectedName(cat.name);
-    if (cat.file !== "custom") {
+    setUploadedFile(null);
+
+    if (cat.file === "custom") {
+      fileInputRef.current?.click();
+    } else {
       setSelectedPdf(cat.file);
     }
   };
 
-  // [분석 시작하기] 버튼 클릭 시 실행
-  const handleStartAnalysis = () => {
-    // 선택한 양식 이름을 주소 뒤에 붙여서(Query) 작업실로 이동합니다.
-    router.push(`/project/new/result?type=${selectedName}`);
+  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file && file.type === "application/pdf") {
+      setUploadedFile(file);
+      const fileUrl = URL.createObjectURL(file);
+      setSelectedPdf(fileUrl);
+      setSelectedName(file.name.replace(/\.pdf$/, ""));
+    } else if (file) {
+      alert("PDF 파일만 업로드 가능합니다.");
+    }
+  };
+
+  const handleAnalyzeClick = () => {
+    // 선택한 양식 이름을 URL 파라미터로 넘깁니다.
+    router.push(`/project/new/result?type=${encodeURIComponent(selectedName)}`);
   };
 
   return (
-    <div className="flex h-screen bg-gray-50 overflow-hidden font-sans">
-      {/* 왼쪽 사이드바 */}
-      <div className="w-64 bg-white border-r border-gray-200 flex flex-col p-6 z-10">
-        <div className="flex items-center gap-2 mb-10 text-blue-600 font-black italic text-xl">REPOT AI</div>
-        <nav className="flex-1 space-y-4">
-          <div className="p-3 bg-blue-50 text-blue-600 rounded-xl font-bold">📂 문서</div>
-          <div className="p-3 text-gray-400 hover:bg-gray-100 rounded-xl cursor-pointer">💬 ChatGPT</div>
+    <div
+      style={{
+        display: "flex",
+        height: "100vh",
+        backgroundColor: "#f3f4f6",
+        fontFamily: "sans-serif",
+        overflow: "hidden",
+      }}
+    >
+      <aside
+        style={{
+          width: "260px",
+          backgroundColor: "white",
+          borderRight: "1px solid #e5e7eb",
+          display: "flex",
+          flexDirection: "column",
+          padding: "30px 20px",
+          flexShrink: 0,
+        }}
+      >
+        <div
+          style={{
+            color: "#2563eb",
+            fontWeight: "900",
+            fontStyle: "italic",
+            fontSize: "22px",
+            marginBottom: "40px",
+          }}
+        >
+          REPOT AI
+        </div>
+        <nav style={{ flex: 1 }}>
+          <div
+            style={{
+              padding: "12px 16px",
+              backgroundColor: "#eff6ff",
+              color: "#2563eb",
+              borderRadius: "12px",
+              fontWeight: "bold",
+              marginBottom: "8px",
+            }}
+          >
+            📂 문서
+          </div>
+          <div style={{ padding: "12px 16px", color: "#9ca3af", borderRadius: "12px", cursor: "pointer" }}>
+            💬 ChatGPT
+          </div>
         </nav>
-      </div>
+      </aside>
 
-      {/* 메인 영역 */}
-      <main className="flex-1 p-8 flex flex-col">
-        <h1 className="text-2xl font-bold mb-6 text-gray-800">문서 종류 선택</h1>
-        <div className="flex gap-8 h-full">
-          {/* 카드 목록 */}
-          <div className="w-[450px] grid grid-cols-2 gap-4 h-fit">
-            {categories.map((cat) => (
-              <div
-                key={cat.name}
-                onClick={() => handleCardClick(cat)}
-                className={`h-36 border-2 rounded-3xl flex flex-col items-center justify-center transition-all cursor-pointer ${
-                  selectedName === cat.name ? "border-blue-500 bg-white shadow-lg" : "border-gray-200 bg-white"
-                }`}
-              >
-                <span className="text-3xl mb-2">{cat.icon}</span>
-                <span className="font-bold text-gray-600">{cat.name}</span>
-              </div>
-            ))}
-
-            {/* 드디어 분석 시작 버튼! */}
+      <main style={{ flex: 1, padding: "20px 40px", display: "flex", flexDirection: "column", overflow: "hidden" }}>
+        <h2 style={{ fontSize: "24px", fontWeight: "bold", marginBottom: "20px", color: "#111827" }}>
+          문서 종류 선택
+        </h2>
+        <div style={{ display: "flex", gap: "25px", flex: 1, minHeight: 0 }}>
+          <div
+            style={{
+              flex: 1,
+              display: "flex",
+              flexDirection: "column",
+              backgroundColor: "white",
+              padding: "25px",
+              borderRadius: "32px",
+              border: "1px solid #e5e7eb",
+              overflow: "hidden",
+            }}
+          >
+            <div
+              style={{
+                display: "grid",
+                gridTemplateColumns: "repeat(2, 1fr)",
+                gap: "15px",
+                overflowY: "auto",
+                flex: 1,
+                paddingRight: "5px",
+                marginBottom: "20px",
+              }}
+            >
+              {categories.map((cat) => (
+                <div
+                  key={cat.name}
+                  onClick={() => handleCardClick(cat)}
+                  style={{
+                    height: "130px",
+                    borderRadius: "24px",
+                    cursor: "pointer",
+                    display: "flex",
+                    flexDirection: "column",
+                    alignItems: "center",
+                    justifyContent: "center",
+                    border: selectedName === cat.name ? "2px solid #2563eb" : "1px solid #f3f4f6",
+                    backgroundColor: selectedName === cat.name ? "white" : "#f9fafb",
+                  }}
+                >
+                  <span style={{ fontSize: "36px", marginBottom: "8px" }}>{cat.icon}</span>
+                  <span
+                    style={{
+                      fontWeight: "bold",
+                      color: selectedName === cat.name ? "#2563eb" : "#6b7280",
+                    }}
+                  >
+                    {cat.name}
+                  </span>
+                </div>
+              ))}
+            </div>
+            <input type="file" ref={fileInputRef} style={{ display: "none" }} accept="application/pdf" onChange={handleFileChange} />
             <button
-              onClick={handleStartAnalysis}
-              className="col-span-2 mt-4 py-5 bg-blue-600 text-white rounded-2xl font-bold text-xl hover:bg-blue-700 shadow-xl transition-all"
+              onClick={handleAnalyzeClick}
+              style={{
+                width: "100%",
+                padding: "20px",
+                backgroundColor: "#2563eb",
+                color: "white",
+                border: "none",
+                borderRadius: "20px",
+                fontSize: "18px",
+                fontWeight: "bold",
+                cursor: "pointer",
+                boxShadow: "0 10px 25px rgba(37, 99, 235, 0.3)",
+              }}
             >
               이 양식으로 분석 시작하기
             </button>
           </div>
 
-          {/* PDF 미리보기 */}
-          <div className="flex-1 bg-white rounded-[32px] overflow-hidden border border-gray-200 shadow-2xl">
-            <iframe src={`${selectedPdf}#toolbar=0`} className="w-full h-full" title="PDF Preview" />
+          <div
+            style={{
+              flex: 1,
+              backgroundColor: "white",
+              borderRadius: "32px",
+              border: "1px solid #e5e7eb",
+              padding: "8px",
+              display: "flex",
+              flexDirection: "column",
+            }}
+          >
+            <div
+              style={{
+                flex: 1,
+                backgroundColor: "#f3f4f6",
+                borderRadius: "26px",
+                overflow: "hidden",
+                border: "1px solid #eee",
+                display: "flex",
+              }}
+            >
+              <iframe
+                key={selectedPdf}
+                src={`${selectedPdf}#toolbar=0&navpanes=0&view=FitH`}
+                style={{ width: "100%", height: "100%", border: "none" }}
+              />
+            </div>
+            <div style={{ padding: "10px 0 8px", textAlign: "center" }}>
+              <span style={{ fontSize: "11px", color: "#9ca3af", fontWeight: "bold" }}>미리보기: </span>
+              <span style={{ fontSize: "16px", color: "#2563eb", fontWeight: "bold" }}>{selectedName}</span>
+            </div>
           </div>
         </div>
       </main>
