@@ -1,6 +1,6 @@
 "use client";
 
-import { Suspense, useCallback, useEffect, useRef, useState } from "react";
+import { Suspense, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { getTemplateFromIDB, saveTemplateToIDB } from "@/lib/templateStore";
 
@@ -215,7 +215,7 @@ function Workspace() {
     e.currentTarget.value = "";
   }, []);
 
-const iframeSrcDoc = useMemo(() => IFRAME_SRC_DOC, []);
+  const iframeSrcDoc = useMemo(() => IFRAME_SRC_DOC, []);
 
   return (
     <div style={{ display: "flex", width: "100vw", height: "100vh", background: "#f3f4f6" }}>
@@ -287,7 +287,7 @@ const iframeSrcDoc = useMemo(() => IFRAME_SRC_DOC, []);
       </aside>
 
       <main style={{ flex: 1, padding: 18, position: "relative" }}>
-        <iframe ref={iframeRef} srcDoc={IFRAME_SRC_DOC} style={{ width: "100%", height: "100%", border: "none" }} />
+        <iframe ref={iframeRef} srcDoc={iframeSrcDoc} style={{ width: "100%", height: "100%", border: "none" }} />
         {(isLoading || loadError) && (
           <div
             style={{
