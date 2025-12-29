@@ -1,8 +1,21 @@
 "use client";
 
-import { useState, Suspense, useEffect, useCallback, useRef } from "react";
-import { useSearchParams } from "next/navigation";
+import { Suspense, useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
 import * as mammoth from "mammoth/mammoth.browser";
+import { getTemplateFromIDB, saveTemplateToIDB } from "@/lib/templateStore";
+
+type TemplateType = "레포트" | "실험보고서" | "논문" | "강의노트" | "문헌고찰";
+type ChatMsg = { role: "ai" | "user"; text: string };
+
+const TYPE_TO_DEFAULT_DOCX: Record<TemplateType, string> = {
+  레포트: "report",
+  실험보고서: "lab_report",
+  논문: "thesis",
+  강의노트: "lecture_note",
+  문헌고찰: "review",
+};
+
 
 export default function ResultPage() {
   return (
@@ -16,16 +29,19 @@ function Workspace() {
   const searchParams = useSearchParams();
   const iframeRef = useRef<HTMLIFrameElement>(null);
   const [frameReady, setFrameReady] = useState(false);
-  const [docHTML, setDocHTML] = useState("");
+  const [docHTML, setDocHTML] = useState<string>("");
+  const [loadError, setLoadError] = useState<string | null>(null);
+  const [loadingMessage, setLoadingMessage] = useState<string | null>(null);
 
-  // 1. URL 파라미터(한글)와 실제 파일명(영어) 매칭 테이블
-  const typeMap: Record<string, string> = {
-    레포트: "report",
-    실험보고서: "lab_report",
-    논문: "thesis",
-    강의노트: "lecture_note",
-    문헌고찰: "review",
-  };
+  const [messages, setMessages] = useState<ChatMsg[]>([
+    { role: "ai", text: "DOCX 템플릿 로딩 후, PDF 업로드로 자동 채움이 가능합니다." },
+  ]);
+
+  const [isLoading, setIsLoading] = useState(false);
+
+  // 같은 템플릿을 중복 로드/중복 postMessage 하지 않게 막는 키
+  const loadedKeyRef = useRef<string>("");
+
 
   const sendHtmlToIframe = useCallback((html: string) => {
     const w = iframeRef.current?.contentWindow;
@@ -46,25 +62,72 @@ function Workspace() {
       // URL에서 ?type=... 값을 읽어옴 (없으면 기본값 '레포트')
       const typeParam = searchParams.get("type") || "레포트";
 
-      // 매핑 테이블에서 영어 파일명을 찾음
-      const fileName = typeMap[typeParam] || "report";
-      const filePath = `/templates/${fileName}.docx`;
+      if (ev.data.type === "FRAME_READY") setFrameReady(true);
+      if (ev.data.type === "EDIT_HTML") setDocHTML(String(ev.data.html || ""));
+    };
+
+    window.addEventListener("message", onMessage);
+    return () => window.removeEventListener("message", onMessage);
+  }, []);
+
+  useEffect(() => {
+    if (!frameReady) return;
+
+    const key = `${type}::${activeTemplateId || "DEFAULT"}`;
+    if (loadedKeyRef.current === key) return;
+    loadedKeyRef.current = key;
+
+    const run = async () => {
+      setIsLoading(true);
+      setLoadError(null);
+      setLoadingMessage("템플릿 로딩 중...");
 
       try {
-        const res = await fetch(filePath, { cache: "no-store" });
-        if (!res.ok) throw new Error(`${filePath} 파일을 찾을 수 없습니다.`);
+        let buf: ArrayBuffer;
+
+        if (activeTemplateId) {
+          const rec = await getTemplateFromIDB(activeTemplateId);
+          if (!rec?.buffer) throw new Error("IDB에서 DOCX 템플릿을 찾지 못했습니다.");
+          buf = rec.buffer;
+        } else {
+          const fileName = TYPE_TO_DEFAULT_DOCX[type] || "report";
+          const res = await fetch(`/templates/${fileName}.docx`, { cache: "no-store" });
+          if (!res.ok) throw new Error(`기본 템플릿 로드 실패: /templates/${fileName}.docx (HTTP ${res.status})`);
+          buf = await res.arrayBuffer();
+        }
+
+        // (이 아래는 원래 파일에 있던 "mammoth 변환 → setDocHTML → iframe 반영" 코드가 이어져야 정상입니다.)
+
 
         const arrayBuffer = await res.arrayBuffer();
         const result = await mammoth.convertToHtml({ arrayBuffer });
         const initial = normalizeTemplateHTML(result.value);
 
-        setDocHTML(initial);
-        if (frameReady) sendHtmlToIframe(initial);
+        setDocHTML(html);
+        sendHtmlToIframe(html);
+        setLoadingMessage(null);
+
+        setMessages((prev) => [
+          ...prev,
+          { role: "ai", text: `템플릿 적용 완료. (templateId=${activeTemplateId ? "있음" : "없음"})` },
+        ]);
       } catch (e) {
-        console.error("템플릿 로드 오류:", e);
-        setDocHTML(
-          `<div style="color:red; padding:20px;">오류: ${typeParam} 양식 파일을 찾을 수 없습니다. (경로: ${filePath})</div>`
-        );
+        console.error(e);
+        setLoadError("템플릿 적용 실패. DOCX 업로드를 다시 시도하거나 콘솔(F12) 에러를 확인하세요.");
+        setLoadingMessage(null);
+        if (!docHTML) {
+          const errHtml = `<div style="color:#b91c1c;font-weight:900;">템플릿 적용 실패</div>
+            <div style="margin-top:8px;line-height:1.7;color:#334155;">
+              - DOCX 업로드를 다시 시도하거나<br/>
+              - 콘솔(F12) 에러를 확인하세요.
+            </div>`;
+          setDocHTML(errHtml);
+          sendHtmlToIframe(errHtml);
+        }
+        setMessages((prev) => [...prev, { role: "ai", text: "템플릿 적용 실패. 콘솔(F12) 확인." }]);
+      } finally {
+        setIsLoading(false);
+
       }
     };
 
@@ -135,4 +198,102 @@ const EDITOR_HTML = `
   </script>
 </body>
 </html>
-`;
+    `;
+  }, []);
+
+  return (
+    <div style={{ display: "flex", width: "100vw", height: "100vh", background: "#f3f4f6" }}>
+      <aside style={{ width: 380, background: "#fff", borderRight: "1px solid #ddd", display: "flex", flexDirection: "column" }}>
+        <div style={{ padding: 18, background: "#1e40af", color: "#fff", fontWeight: 900 }}>
+          WORKSPACE
+          <div style={{ fontSize: 12, opacity: 0.9, marginTop: 4 }}>
+            type: {type} / templateId: {activeTemplateId ? "있음" : "없음"}
+          </div>
+        </div>
+
+        <div style={{ padding: 14, borderBottom: "1px solid #eee" }}>
+          <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
+            <label
+              style={{
+                padding: "10px 12px",
+                borderRadius: 10,
+                border: "1px dashed #1e40af",
+                background: "#fff",
+                color: "#1e40af",
+                fontWeight: 900,
+                cursor: "pointer",
+              }}
+            >
+              DOCX 템플릿 업로드
+              <input type="file" accept=".docx" hidden onChange={onUploadDocxTemplateHere} />
+            </label>
+
+            <label
+              style={{
+                padding: "10px 12px",
+                borderRadius: 10,
+                border: "1px solid #cbd5e1",
+                background: "#0f172a",
+                color: "#fff",
+                fontWeight: 900,
+                cursor: "pointer",
+              }}
+            >
+              PDF 업로드
+              <input type="file" accept=".pdf" hidden onChange={onUploadPdf} />
+            </label>
+          </div>
+
+          {isLoading && (
+            <div style={{ marginTop: 10, color: "#e11d48", fontWeight: 800 }}>
+              {loadingMessage || "처리 중..."}
+            </div>
+          )}
+        </div>
+
+        <div style={{ flex: 1, overflowY: "auto", padding: 14, fontSize: 13 }}>
+          {messages.map((m, i) => (
+            <div
+              key={i}
+              style={{
+                marginBottom: 10,
+                padding: 12,
+                borderRadius: 10,
+                background: m.role === "user" ? "#eff6ff" : "#f8fafc",
+                border: "1px solid #e2e8f0",
+                lineHeight: 1.6,
+              }}
+            >
+              {m.text}
+            </div>
+          ))}
+        </div>
+      </aside>
+
+      <main style={{ flex: 1, padding: 18, position: "relative" }}>
+        <iframe ref={iframeRef} srcDoc={iframeSrcDoc} style={{ width: "100%", height: "100%", border: "none" }} />
+        {(isLoading || loadError) && (
+          <div
+            style={{
+              position: "absolute",
+              inset: 18,
+              background: "rgba(15, 23, 42, 0.35)",
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              padding: 24,
+              borderRadius: 12,
+              color: "#fff",
+              fontWeight: 800,
+              textAlign: "center",
+              pointerEvents: "none",
+            }}
+          >
+            {loadError || loadingMessage || "처리 중..."}
+          </div>
+        )}
+      </main>
+    </div>
+  );
+}
+

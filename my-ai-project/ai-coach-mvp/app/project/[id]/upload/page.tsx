@@ -7,6 +7,7 @@ export default function MainUploadPage() {
   const router = useRouter();
   const fileInputRef = useRef<HTMLInputElement>(null);
 
+  // 템플릿 선택 상태 (codex 쪽 기능)
   const [selectedName, setSelectedName] = useState("레포트");
   const [selectedPdf, setSelectedPdf] = useState("/templates/report.pdf");
   const [uploadedFile, setUploadedFile] = useState<File | null>(null);
@@ -19,6 +20,42 @@ export default function MainUploadPage() {
     { name: "문헌고찰", icon: "📚", file: "/templates/review.pdf" },
     { name: "내 양식 업로드", icon: "➕", file: "custom" },
   ];
+
+  // AI 초안 생성 (main 쪽 기능)
+  const handleUpload = async () => {
+    setLoading(true);
+    setStatus("📡 AI가 분석을 시작했습니다...");
+    setResult("");
+
+    const subject = "동물질병학";
+    const assertion = `${selectedName} 초안`;
+
+    try {
+      const response = await fetch("/api/generate", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          prompt: `${subject} 과목의 ${assertion}를 작성해 주세요.`,
+          type: selectedName,
+        }),
+      });
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        setStatus(`❌ 에러 발생: ${data.error}`);
+        return;
+      }
+
+      setResult(data.result);
+      setStatus("✅ 분석이 완료되었습니다!");
+    } catch (e: any) {
+      setStatus(`❌ 연결 실패: ${e.message}`);
+    } finally {
+      setLoading(false);
+    }
+  };
+
 
   const handleCardClick = (cat: any) => {
     setSelectedName(cat.name);
