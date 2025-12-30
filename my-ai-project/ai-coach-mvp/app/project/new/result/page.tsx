@@ -1,8 +1,9 @@
 "use client";
 
-import { Suspense, useCallback, useEffect, useRef, useState } from "react";
+import { Suspense, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { getTemplateFromIDB, saveTemplateToIDB } from "@/lib/templateStore";
+import styles from "./result.module.css";
 
 type TemplateType = "레포트" | "실험보고서" | "논문" | "강의노트" | "문헌고찰";
 type ChatMsg = { role: "ai" | "user"; text: string };
@@ -215,70 +216,45 @@ function Workspace() {
     e.currentTarget.value = "";
   }, []);
 
-const iframeSrcDoc = useMemo(() => IFRAME_SRC_DOC, []);
+  const iframeSrcDoc = useMemo(() => IFRAME_SRC_DOC, []);
 
   return (
-    <div style={{ display: "flex", width: "100vw", height: "100vh", background: "#f3f4f6" }}>
-      <aside style={{ width: 380, background: "#fff", borderRight: "1px solid #ddd", display: "flex", flexDirection: "column" }}>
-        <div style={{ padding: 18, background: "#1e40af", color: "#fff", fontWeight: 900 }}>
+    <div className={styles.page}>
+      <aside className={styles.sidebar}>
+        <div className={styles.sidebarHeader}>
           WORKSPACE
-          <div style={{ fontSize: 12, opacity: 0.9, marginTop: 4 }}>
+          <div className={styles.sidebarHeaderMeta}>
             type: {type} / templateId: {activeTemplateId ? "있음" : "없음"}
           </div>
         </div>
 
-        <div style={{ padding: 14, borderBottom: "1px solid #eee" }}>
-          <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
-            <label
-              style={{
-                padding: "10px 12px",
-                borderRadius: 10,
-                border: "1px dashed #1e40af",
-                background: "#fff",
-                color: "#1e40af",
-                fontWeight: 900,
-                cursor: "pointer",
-              }}
-            >
+        <div className={styles.uploadSection}>
+          <div className={styles.uploadButtons}>
+            <label className={styles.docxUpload}>
               DOCX 템플릿 업로드
               <input type="file" accept=".docx" hidden onChange={onUploadDocxTemplateHere} />
             </label>
 
-            <label
-              style={{
-                padding: "10px 12px",
-                borderRadius: 10,
-                border: "1px solid #cbd5e1",
-                background: "#0f172a",
-                color: "#fff",
-                fontWeight: 900,
-                cursor: "pointer",
-              }}
-            >
+            <label className={styles.pdfUpload}>
               PDF 업로드
               <input type="file" accept=".pdf" hidden onChange={onUploadPdf} />
             </label>
           </div>
 
           {isLoading && (
-            <div style={{ marginTop: 10, color: "#e11d48", fontWeight: 800 }}>
+            <div className={styles.loadingNote}>
               {loadingMessage || "처리 중..."}
             </div>
           )}
         </div>
 
-        <div style={{ flex: 1, overflowY: "auto", padding: 14, fontSize: 13 }}>
+        <div className={styles.messageList}>
           {messages.map((m, i) => (
             <div
               key={i}
-              style={{
-                marginBottom: 10,
-                padding: 12,
-                borderRadius: 10,
-                background: m.role === "user" ? "#eff6ff" : "#f8fafc",
-                border: "1px solid #e2e8f0",
-                lineHeight: 1.6,
-              }}
+              className={`${styles.messageItem} ${
+                m.role === "user" ? styles.messageUser : styles.messageAi
+              }`}
             >
               {m.text}
             </div>
@@ -286,25 +262,10 @@ const iframeSrcDoc = useMemo(() => IFRAME_SRC_DOC, []);
         </div>
       </aside>
 
-      <main style={{ flex: 1, padding: 18, position: "relative" }}>
-        <iframe ref={iframeRef} srcDoc={IFRAME_SRC_DOC} style={{ width: "100%", height: "100%", border: "none" }} />
+      <main className={styles.main}>
+        <iframe ref={iframeRef} srcDoc={iframeSrcDoc} className={styles.editorFrame} />
         {(isLoading || loadError) && (
-          <div
-            style={{
-              position: "absolute",
-              inset: 18,
-              background: "rgba(15, 23, 42, 0.35)",
-              display: "flex",
-              alignItems: "center",
-              justifyContent: "center",
-              padding: 24,
-              borderRadius: 12,
-              color: "#fff",
-              fontWeight: 800,
-              textAlign: "center",
-              pointerEvents: "none",
-            }}
-          >
+          <div className={styles.overlay}>
             {loadError || loadingMessage || "처리 중..."}
           </div>
         )}
