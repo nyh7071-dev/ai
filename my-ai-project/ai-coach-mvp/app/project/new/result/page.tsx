@@ -185,26 +185,35 @@ function Workspace() {
       if (!file) return;
 
       setIsLoading(true);
+      setLoadError(null);
+      setLoadingMessage("DOCX 템플릿 적용 중...");
       setMessages((prev) => [...prev, { role: "ai", text: "DOCX 업로드 템플릿 적용 중..." }]);
 
       try {
         const buf = await file.arrayBuffer();
-        const newId = await saveTemplateToIDB(file.name, buf);
+        const html = await loadDocxArrayBufferToHtml(buf);
+        if (!html) throw new Error("DOCX 변환 결과가 비어있습니다.");
 
+        sendHtmlToIframe(html);
+        setDocHTML(html);
+
+        const newId = await saveTemplateToIDB(file.name, buf);
         setActiveTemplateId(newId);
-        loadedKeyRef.current = ""; // 강제 리로드
+        loadedKeyRef.current = `${type}::${newId}`;
         router.replace(
           `/project/new/result?type=${encodeURIComponent(type)}&templateId=${encodeURIComponent(newId)}`
         );
       } catch (err) {
         console.error(err);
+        setLoadError("DOCX 업로드/저장 실패. 콘솔(F12) 확인.");
         setMessages((prev) => [...prev, { role: "ai", text: "DOCX 업로드/저장 실패. 콘솔(F12) 확인." }]);
       } finally {
         e.currentTarget.value = "";
         setIsLoading(false);
+        setLoadingMessage(null);
       }
     },
-    [router, type]
+    [loadDocxArrayBufferToHtml, router, sendHtmlToIframe, type]
   );
 
   // PDF 업로드는 네 기존 자동채움 로직을 여기 붙이면 됩니다.
@@ -219,34 +228,63 @@ function Workspace() {
   const iframeSrcDoc = useMemo(() => IFRAME_SRC_DOC, []);
 
   return (
+
+    <div className="flex h-screen w-screen overflow-hidden bg-gray-100">
+      <aside className="flex w-[380px] flex-col border-r border-gray-300 bg-white">
+        <div className="bg-blue-900 px-5 py-4 font-black text-white">
+          WORKSPACE
+          <div className="mt-1 text-xs opacity-90">
+
     <div className={styles.page}>
       <aside className={styles.sidebar}>
         <div className={styles.sidebarHeader}>
           WORKSPACE
           <div className={styles.sidebarHeaderMeta}>
+
             type: {type} / templateId: {activeTemplateId ? "있음" : "없음"}
           </div>
         </div>
 
+
+        <div className="border-b border-gray-200 p-4">
+          <div className="flex flex-wrap gap-2.5">
+            <label className="cursor-pointer rounded-lg border border-dashed border-blue-900 bg-white px-3 py-2.5 font-black text-blue-900">
         <div className={styles.uploadSection}>
           <div className={styles.uploadButtons}>
             <label className={styles.docxUpload}>
+
               DOCX 템플릿 업로드
               <input type="file" accept=".docx" hidden onChange={onUploadDocxTemplateHere} />
             </label>
 
+
+            <label className="cursor-pointer rounded-lg border border-slate-300 bg-slate-900 px-3 py-2.5 font-black text-white">
+
             <label className={styles.pdfUpload}>
+
               PDF 업로드
               <input type="file" accept=".pdf" hidden onChange={onUploadPdf} />
             </label>
           </div>
 
           {isLoading && (
+
+            <div className="mt-2.5 font-extrabold text-rose-600">
+
             <div className={styles.loadingNote}>
+
               {loadingMessage || "처리 중..."}
             </div>
           )}
         </div>
+
+
+        <div className="flex-1 overflow-y-auto p-4 text-xs">
+          {messages.map((m, i) => (
+            <div
+              key={i}
+              className={`mb-2.5 rounded-lg border border-slate-200 p-3 leading-6 ${
+                m.role === "user" ? "bg-blue-50" : "bg-slate-50"
 
         <div className={styles.messageList}>
           {messages.map((m, i) => (
@@ -254,6 +292,7 @@ function Workspace() {
               key={i}
               className={`${styles.messageItem} ${
                 m.role === "user" ? styles.messageUser : styles.messageAi
+
               }`}
             >
               {m.text}
@@ -263,6 +302,12 @@ function Workspace() {
       </aside>
 
 
+      <main className="relative flex-1 p-4">
+        <iframe ref={iframeRef} srcDoc={iframeSrcDoc} className="h-full w-full border-0" />
+        {(isLoading || loadError) && (
+          <div className="pointer-events-none absolute inset-4 flex items-center justify-center rounded-xl bg-slate-900/35 p-6 text-center font-extrabold text-white">
+
+
       <main className={styles.main}>
         <iframe ref={iframeRef} srcDoc={iframeSrcDoc} className={styles.editorFrame} />
       <main style={{ flex: 1, padding: 18, position: "relative" }}>
@@ -270,6 +315,7 @@ function Workspace() {
 
         {(isLoading || loadError) && (
           <div className={styles.overlay}>
+
             {loadError || loadingMessage || "처리 중..."}
           </div>
         )}
