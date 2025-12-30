@@ -262,8 +262,12 @@ function Workspace() {
         </div>
       </aside>
 
+
       <main className={styles.main}>
         <iframe ref={iframeRef} srcDoc={iframeSrcDoc} className={styles.editorFrame} />
+      <main style={{ flex: 1, padding: 18, position: "relative" }}>
+        <iframe ref={iframeRef} srcDoc={iframeSrcDoc} style={{ width: "100%", height: "100%", border: "none" }} />
+
         {(isLoading || loadError) && (
           <div className={styles.overlay}>
             {loadError || loadingMessage || "처리 중..."}
