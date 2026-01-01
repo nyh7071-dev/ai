@@ -1,3 +1,11 @@
+import "./globals.css";
+import type { Metadata } from "next";
+
+export const metadata: Metadata = {
+  title: "Repot AI",
+  description: "AI 문서 작성/편집 워크스페이스",
+};
+
 export default function RootLayout({
   children,
 }: Readonly<{
@@ -5,11 +13,7 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="ko">
-      {/* 아래처럼 body 태그에 suppressHydrationWarning={true} 를 추가하세요 */}
-      <body 
-        className="antialiased" 
-        suppressHydrationWarning={true} 
-      >
+      <body className="antialiased" suppressHydrationWarning>
         {children}
       </body>
     </html>
