@@ -1,6 +1,6 @@
 "use client";
 
-import { Suspense, useCallback, useEffect, useRef, useState } from "react";
+import { Suspense, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { getTemplateFromIDB, saveTemplateToIDB } from "@/lib/templateStore";
 
@@ -184,26 +184,35 @@ function Workspace() {
       if (!file) return;
 
       setIsLoading(true);
+      setLoadError(null);
+      setLoadingMessage("DOCX 템플릿 적용 중...");
       setMessages((prev) => [...prev, { role: "ai", text: "DOCX 업로드 템플릿 적용 중..." }]);
 
       try {
         const buf = await file.arrayBuffer();
-        const newId = await saveTemplateToIDB(file.name, buf);
+        const html = await loadDocxArrayBufferToHtml(buf);
+        if (!html) throw new Error("DOCX 변환 결과가 비어있습니다.");
 
+        sendHtmlToIframe(html);
+        setDocHTML(html);
+
+        const newId = await saveTemplateToIDB(file.name, buf);
         setActiveTemplateId(newId);
-        loadedKeyRef.current = ""; // 강제 리로드
+        loadedKeyRef.current = `${type}::${newId}`;
         router.replace(
           `/project/new/result?type=${encodeURIComponent(type)}&templateId=${encodeURIComponent(newId)}`
         );
       } catch (err) {
         console.error(err);
+        setLoadError("DOCX 업로드/저장 실패. 콘솔(F12) 확인.");
         setMessages((prev) => [...prev, { role: "ai", text: "DOCX 업로드/저장 실패. 콘솔(F12) 확인." }]);
       } finally {
         e.currentTarget.value = "";
         setIsLoading(false);
+        setLoadingMessage(null);
       }
     },
-    [router, type]
+    [loadDocxArrayBufferToHtml, router, sendHtmlToIframe, type]
   );
 
   // PDF 업로드는 네 기존 자동채움 로직을 여기 붙이면 됩니다.
@@ -215,70 +224,45 @@ function Workspace() {
     e.currentTarget.value = "";
   }, []);
 
-const iframeSrcDoc = useMemo(() => IFRAME_SRC_DOC, []);
+  const iframeSrcDoc = useMemo(() => IFRAME_SRC_DOC, []);
 
   return (
-    <div style={{ display: "flex", width: "100vw", height: "100vh", background: "#f3f4f6" }}>
-      <aside style={{ width: 380, background: "#fff", borderRight: "1px solid #ddd", display: "flex", flexDirection: "column" }}>
-        <div style={{ padding: 18, background: "#1e40af", color: "#fff", fontWeight: 900 }}>
+    <div className="flex h-screen w-screen overflow-hidden bg-gray-100">
+      <aside className="flex w-[380px] flex-col border-r border-gray-300 bg-white">
+        <div className="bg-blue-900 px-5 py-4 font-black text-white">
           WORKSPACE
-          <div style={{ fontSize: 12, opacity: 0.9, marginTop: 4 }}>
+          <div className="mt-1 text-xs opacity-90">
             type: {type} / templateId: {activeTemplateId ? "있음" : "없음"}
           </div>
         </div>
 
-        <div style={{ padding: 14, borderBottom: "1px solid #eee" }}>
-          <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
-            <label
-              style={{
-                padding: "10px 12px",
-                borderRadius: 10,
-                border: "1px dashed #1e40af",
-                background: "#fff",
-                color: "#1e40af",
-                fontWeight: 900,
-                cursor: "pointer",
-              }}
-            >
+        <div className="border-b border-gray-200 p-4">
+          <div className="flex flex-wrap gap-2.5">
+            <label className="cursor-pointer rounded-lg border border-dashed border-blue-900 bg-white px-3 py-2.5 font-black text-blue-900">
               DOCX 템플릿 업로드
               <input type="file" accept=".docx" hidden onChange={onUploadDocxTemplateHere} />
             </label>
 
-            <label
-              style={{
-                padding: "10px 12px",
-                borderRadius: 10,
-                border: "1px solid #cbd5e1",
-                background: "#0f172a",
-                color: "#fff",
-                fontWeight: 900,
-                cursor: "pointer",
-              }}
-            >
+            <label className="cursor-pointer rounded-lg border border-slate-300 bg-slate-900 px-3 py-2.5 font-black text-white">
               PDF 업로드
               <input type="file" accept=".pdf" hidden onChange={onUploadPdf} />
             </label>
           </div>
 
           {isLoading && (
-            <div style={{ marginTop: 10, color: "#e11d48", fontWeight: 800 }}>
+            <div className="mt-2.5 font-extrabold text-rose-600">
               {loadingMessage || "처리 중..."}
             </div>
           )}
         </div>
 
-        <div style={{ flex: 1, overflowY: "auto", padding: 14, fontSize: 13 }}>
+        <div className="flex-1 overflow-y-auto p-4 text-xs">
           {messages.map((m, i) => (
             <div
               key={i}
-              style={{
-                marginBottom: 10,
-                padding: 12,
-                borderRadius: 10,
-                background: m.role === "user" ? "#eff6ff" : "#f8fafc",
-                border: "1px solid #e2e8f0",
-                lineHeight: 1.6,
-              }}
+              className={`mb-2.5 rounded-lg border border-slate-200 p-3 leading-6 ${
+                m.role === "user" ? "bg-blue-50" : "bg-slate-50"
+              }`}
             >
               {m.text}
             </div>
@@ -286,25 +270,10 @@ const iframeSrcDoc = useMemo(() => IFRAME_SRC_DOC, []);
         </div>
       </aside>
 
-      <main style={{ flex: 1, padding: 18, position: "relative" }}>
-        <iframe ref={iframeRef} srcDoc={IFRAME_SRC_DOC} style={{ width: "100%", height: "100%", border: "none" }} />
+      <main className="relative flex-1 p-4">
+        <iframe ref={iframeRef} srcDoc={iframeSrcDoc} className="h-full w-full border-0" />
         {(isLoading || loadError) && (
-          <div
-            style={{
-              position: "absolute",
-              inset: 18,
-              background: "rgba(15, 23, 42, 0.35)",
-              display: "flex",
-              alignItems: "center",
-              justifyContent: "center",
-              padding: 24,
-              borderRadius: 12,
-              color: "#fff",
-              fontWeight: 800,
-              textAlign: "center",
-              pointerEvents: "none",
-            }}
-          >
+          <div className="pointer-events-none absolute inset-4 flex items-center justify-center rounded-xl bg-slate-900/35 p-6 text-center font-extrabold text-white">
             {loadError || loadingMessage || "처리 중..."}
           </div>
         )}
