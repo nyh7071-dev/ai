@@ -290,8 +290,10 @@ function Workspace() {
 
 
 
+
         sendHtmlToIframe(html);
         setDocHTML(html);
+
 
         const newId = await saveTemplateToIDB(file.name, buf);
         setActiveTemplateId(newId);
@@ -350,6 +352,22 @@ function Workspace() {
     [applyAiToTemplate, chatInput, sourceText]
   );
 
+
+
+  const onChatSubmit = useCallback(
+    async (e: React.FormEvent) => {
+      e.preventDefault();
+      const input = chatInput.trim();
+      if (!input) return;
+
+      setChatInput("");
+      setMessages((prev) => [...prev, { role: "user", text: input }]);
+
+      await applyAiToTemplate(sourceText, input);
+    },
+    [applyAiToTemplate, chatInput, sourceText]
+  );
+
   const iframeSrcDoc = useMemo(() => IFRAME_SRC_DOC, []);
 
   return (
@@ -358,6 +376,7 @@ function Workspace() {
         <div className="bg-blue-900 px-5 py-4 font-black text-white">
           WORKSPACE
           <div className="mt-1 text-xs opacity-90">
+
 
           WORKSPACE
           <div className="mt-1 text-xs opacity-90">
@@ -393,6 +412,7 @@ function Workspace() {
 
 
 
+
         <div className="border-b border-gray-200 p-4">
           <div className="flex flex-wrap gap-2.5">
             <label className="cursor-pointer rounded-lg border border-dashed border-blue-900 bg-white px-3 py-2.5 font-black text-blue-900">
@@ -416,6 +436,7 @@ function Workspace() {
 
 
 
+
             <label className="cursor-pointer rounded-lg border border-slate-300 bg-slate-900 px-3 py-2.5 font-black text-white">
 
 
@@ -431,6 +452,7 @@ function Workspace() {
 
           {isLoading && (
             <div className="mt-2.5 font-extrabold text-rose-600">
+
 
 
 
@@ -451,12 +473,14 @@ function Workspace() {
 
 
 
+
         <div className="flex-1 overflow-y-auto p-4 text-xs">
           {messages.map((m, i) => (
             <div
               key={i}
               className={`mb-2.5 rounded-lg border border-slate-200 p-3 leading-6 ${
                 m.role === "user" ? "bg-blue-50" : "bg-slate-50"
+
 
 
 
@@ -494,6 +518,9 @@ function Workspace() {
 
       <main className="relative flex-1 p-4">
         <iframe ref={iframeRef} srcDoc={iframeSrcDoc} className="h-full w-full border-0" />
+        {(isLoading || loadError) && (
+          <div className="pointer-events-none absolute inset-4 flex items-center justify-center rounded-xl bg-slate-900/35 p-6 text-center font-extrabold text-white">
+
         {(isLoading || loadError) && (
           <div className="pointer-events-none absolute inset-4 flex items-center justify-center rounded-xl bg-slate-900/35 p-6 text-center font-extrabold text-white">
 
