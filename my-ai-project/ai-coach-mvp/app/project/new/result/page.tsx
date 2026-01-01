@@ -197,6 +197,11 @@ function Workspace() {
         sendHtmlToIframe(html);
         setDocHTML(html);
 
+
+
+        sendHtmlToIframe(html);
+        setDocHTML(html);
+
         const newId = await saveTemplateToIDB(file.name, buf);
         setActiveTemplateId(newId);
         loadedKeyRef.current = `${type}::${newId}`;
@@ -228,6 +233,12 @@ function Workspace() {
   const iframeSrcDoc = useMemo(() => IFRAME_SRC_DOC, []);
 
   return (
+    <div className="flex h-screen w-screen overflow-hidden bg-gray-100">
+      <aside className="flex w-[380px] flex-col border-r border-gray-300 bg-white">
+        <div className="bg-blue-900 px-5 py-4 font-black text-white">
+          WORKSPACE
+          <div className="mt-1 text-xs opacity-90">
+
 
     <div className="flex h-screen w-screen overflow-hidden bg-gray-100">
       <aside className="flex w-[380px] flex-col border-r border-gray-300 bg-white">
@@ -253,6 +264,10 @@ function Workspace() {
           </div>
         </div>
 
+        <div className="border-b border-gray-200 p-4">
+          <div className="flex flex-wrap gap-2.5">
+            <label className="cursor-pointer rounded-lg border border-dashed border-blue-900 bg-white px-3 py-2.5 font-black text-blue-900">
+
 
         <div className="border-b border-gray-200 p-4">
           <div className="flex flex-wrap gap-2.5">
@@ -271,6 +286,8 @@ function Workspace() {
               <input type="file" accept=".docx" hidden onChange={onUploadDocxTemplateHere} />
             </label>
 
+            <label className="cursor-pointer rounded-lg border border-slate-300 bg-slate-900 px-3 py-2.5 font-black text-white">
+
 
             <label className="cursor-pointer rounded-lg border border-slate-300 bg-slate-900 px-3 py-2.5 font-black text-white">
 
@@ -286,6 +303,8 @@ function Workspace() {
           </div>
 
           {isLoading && (
+            <div className="mt-2.5 font-extrabold text-rose-600">
+
 
             <div className="mt-2.5 font-extrabold text-rose-600">
 
@@ -327,6 +346,10 @@ function Workspace() {
         </div>
       </aside>
 
+      <main className="relative flex-1 p-4">
+        <iframe ref={iframeRef} srcDoc={iframeSrcDoc} className="h-full w-full border-0" />
+        {(isLoading || loadError) && (
+          <div className="pointer-events-none absolute inset-4 flex items-center justify-center rounded-xl bg-slate-900/35 p-6 text-center font-extrabold text-white">
 
       <main className="relative flex-1 p-4">
         <iframe ref={iframeRef} srcDoc={iframeSrcDoc} className="h-full w-full border-0" />
