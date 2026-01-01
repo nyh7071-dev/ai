@@ -6,6 +6,8 @@ export const metadata: Metadata = {
   description: "AI 문서 작성/편집 워크스페이스",
 };
 
+
+
 export default function RootLayout({
   children,
 }: Readonly<{
