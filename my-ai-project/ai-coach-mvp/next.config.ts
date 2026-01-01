@@ -8,10 +8,7 @@ const workspaceRoot = process.env.NEXT_WORKSPACE_ROOT
 
 const nextConfig: NextConfig = {
   turbopack: {
-    root: workspaceRoot,
-  },
-  experimental: {
-    outputFileTracingRoot: workspaceRoot,
+    root: path.join(__dirname),
   },
 };
 
