@@ -112,3 +112,33 @@
   text-align: center;
   pointer-events: none;
 }
+
+.chatForm {
+  border-top: 1px solid #e2e8f0;
+  padding: 12px;
+}
+
+.chatInput {
+  width: 100%;
+  resize: none;
+  border-radius: 8px;
+  border: 1px solid #cbd5e1;
+  padding: 8px;
+  font-size: 12px;
+}
+
+.chatInput:focus {
+  outline: none;
+  border-color: #3b82f6;
+}
+
+.chatButton {
+  margin-top: 8px;
+  width: 100%;
+  border-radius: 8px;
+  background: #2563eb;
+  padding: 8px;
+  font-size: 12px;
+  font-weight: 700;
+  color: #fff;
+}
