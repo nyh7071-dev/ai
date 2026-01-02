@@ -33,8 +33,9 @@ export default function UploadPage() {
 
       setResult(data.result);
       setStatus("✅ 분석이 완료되었습니다!");
-    } catch (e: any) {
-      setStatus(`❌ 연결 실패: ${e.message}`);
+    } catch (e: unknown) {
+      const message = e instanceof Error ? e.message : "알 수 없는 오류가 발생했습니다.";
+      setStatus(`❌ 연결 실패: ${message}`);
     } finally {
       setLoading(false);
     }

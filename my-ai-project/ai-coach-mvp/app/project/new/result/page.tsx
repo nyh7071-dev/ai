@@ -1,7 +1,8 @@
 "use client";
 
-import { Suspense, useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { Suspense, useCallback, useEffect, useRef, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
+import dynamic from "next/dynamic";
 import { getTemplateFromIDB, saveTemplateToIDB } from "@/lib/templateStore";
 import styles from "./result.module.css";
 
@@ -54,6 +55,8 @@ const IFRAME_SRC_DOC = [
   "</html>",
 ].join("\n");
 
+const Workspace = dynamic(() => Promise.resolve(WorkspaceImpl), { ssr: false });
+
 export default function ResultPage() {
   return (
     <Suspense fallback={<div style={{ padding: 20 }}>로딩 중...</div>}>
@@ -62,7 +65,7 @@ export default function ResultPage() {
   );
 }
 
-function Workspace() {
+function WorkspaceImpl() {
   const router = useRouter();
   const sp = useSearchParams();
 
@@ -268,7 +271,7 @@ function Workspace() {
     };
 
     run();
-  }, [frameReady, type, activeTemplateId, loadDocxArrayBufferToHtml, sendHtmlToIframe]);
+  }, [frameReady, type, activeTemplateId, loadDocxArrayBufferToHtml, sendHtmlToIframe, docHTML]);
 
   const onUploadDocxTemplateHere = useCallback(
     async (e: React.ChangeEvent<HTMLInputElement>) => {

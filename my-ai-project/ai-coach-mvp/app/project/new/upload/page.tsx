@@ -8,9 +8,9 @@ export default function MainUploadPage() {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [selectedName, setSelectedName] = useState("레포트");
   const [selectedPdf, setSelectedPdf] = useState("/templates/report.pdf");
-  const [uploadedFile, setUploadedFile] = useState<File | null>(null);
+  type Category = { name: string; icon: string; file: string };
 
-  const categories = [
+  const categories: Category[] = [
     { name: "레포트", icon: "📄", file: "/templates/report.pdf" },
     { name: "실험보고서", icon: "🧪", file: "/templates/lab_report.pdf" },
     { name: "논문", icon: "🎓", file: "/templates/thesis.pdf" },
@@ -19,20 +19,18 @@ export default function MainUploadPage() {
     { name: "내 양식 업로드", icon: "➕", file: "custom" },
   ];
 
-  const handleCardClick = (cat: any) => {
+  const handleCardClick = (cat: Category) => {
     setSelectedName(cat.name);
     if (cat.file === "custom") {
       fileInputRef.current?.click();
     } else {
       setSelectedPdf(cat.file);
-      setUploadedFile(null);
     }
   };
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (file && file.type === "application/pdf") {
-      setUploadedFile(file);
       setSelectedPdf(URL.createObjectURL(file));
       setSelectedName(file.name.replace(/\.pdf$/, ''));
     }
