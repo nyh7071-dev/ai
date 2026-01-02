@@ -11,7 +11,7 @@ export default function InputPage() {
   const [formData, setFormData] = useState({ subject: '', assertion: '', keywords: '' });
   const [loading, setLoading] = useState(false);
 
-  const handleSubmit = async (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     setLoading(true);
     try {
@@ -32,8 +32,9 @@ export default function InputPage() {
       alert("정보가 저장되었습니다!");
       // 다음 화면으로 projectId를 들고 이동!
       router.push(`/project/new/upload?projectId=${data.id}`);
-    } catch (err: any) {
-      alert("에러 발생: " + err.message);
+    } catch (err: unknown) {
+      const message = err instanceof Error ? err.message : "알 수 없는 오류가 발생했습니다.";
+      alert("에러 발생: " + message);
     } finally {
       setLoading(false);
     }
