@@ -11,6 +11,7 @@
   border-right: 1px solid #ddd;
   display: flex;
   flex-direction: column;
+  min-height: 100vh;
 }
 
 .sidebarHeader {
@@ -33,28 +34,19 @@
 
 .uploadButtons {
   display: flex;
-  gap: 10px;
-  flex-wrap: wrap;
+  gap: 8px;
+  flex-wrap: nowrap;
 }
 
 .docxUpload {
-  padding: 10px 12px;
+  padding: 8px 12px;
   border-radius: 10px;
   border: 1px dashed #1e40af;
   background: #fff;
   color: #1e40af;
-  font-weight: 900;
+  font-weight: 800;
   cursor: pointer;
-}
-
-.pdfUpload {
-  padding: 10px 12px;
-  border-radius: 10px;
-  border: 1px solid #cbd5e1;
-  background: #0f172a;
-  color: #fff;
-  font-weight: 900;
-  cursor: pointer;
+  font-size: 12px;
 }
 
 .loadingNote {
