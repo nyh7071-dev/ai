@@ -1,107 +1,238 @@
 "use client";
 
-import { useState } from "react";
+import { useRef, useState } from "react";
 import { useRouter } from "next/navigation";
-import { saveTemplateToIDB } from "@/lib/templateStore";
 
-const TYPE_OPTIONS = ["레포트", "실험보고서", "논문", "강의노트", "문헌고찰"] as const;
-type TemplateType = (typeof TYPE_OPTIONS)[number];
-
-export default function Home() {
+export default function MainUploadPage() {
   const router = useRouter();
-  const [type, setType] = useState<TemplateType>("레포트");
-  const [busy, setBusy] = useState(false);
-  const [status, setStatus] = useState("");
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
-  const onUploadTemplate = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
+  const [selectedName, setSelectedName] = useState("레포트");
+  const [selectedPdf, setSelectedPdf] = useState("/templates/report.pdf");
+  const [uploadedFile, setUploadedFile] = useState<File | null>(null);
 
-    setBusy(true);
-    setStatus("DOCX 템플릿 저장 중...");
+  const categories = [
+    { name: "레포트", icon: "📄", file: "/templates/report.pdf" },
+    { name: "실험보고서", icon: "🧪", file: "/templates/lab_report.pdf" },
+    { name: "논문", icon: "🎓", file: "/templates/thesis.pdf" },
+    { name: "강의노트", icon: "📝", file: "/templates/lecture_note.pdf" },
+    { name: "문헌고찰", icon: "📚", file: "/templates/review.pdf" },
+    { name: "내 양식 업로드", icon: "➕", file: "custom" },
+  ];
 
-    try {
-      const buffer = await file.arrayBuffer();
-      const templateId = await saveTemplateToIDB(file.name, buffer);
+  const handleCardClick = (cat: (typeof categories)[number]) => {
+    setSelectedName(cat.name);
+    setUploadedFile(null);
 
-      router.push(`/result?type=${encodeURIComponent(type)}&templateId=${encodeURIComponent(templateId)}`);
-    } catch (err) {
-      console.error(err);
-      setStatus("DOCX 저장 실패 (F12 콘솔 확인)");
-      setBusy(false);
-    } finally {
-      e.currentTarget.value = "";
+    if (cat.file === "custom") {
+      fileInputRef.current?.click();
+    } else {
+      setSelectedPdf(cat.file);
     }
   };
 
-  const goDefault = () => {
-    router.push(`/result?type=${encodeURIComponent(type)}`);
+  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file && file.type === "application/pdf") {
+      setUploadedFile(file);
+      const fileUrl = URL.createObjectURL(file);
+      setSelectedPdf(fileUrl);
+      setSelectedName(file.name.replace(/\.pdf$/, ""));
+    } else if (file) {
+      alert("PDF 파일만 업로드 가능합니다.");
+    }
+  };
+
+  const handleAnalyzeClick = () => {
+    router.push(`/project/new/result?type=${encodeURIComponent(selectedName)}`);
   };
 
   return (
-    <div style={{ padding: 28, maxWidth: 900, margin: "0 auto" }}>
-      <h1 style={{ fontSize: 22, fontWeight: 900, marginBottom: 14 }}>템플릿 선택</h1>
+    <div
+      style={{
+        display: "flex",
+        height: "100vh",
+        backgroundColor: "#f3f4f6",
+        fontFamily: "sans-serif",
+        overflow: "hidden",
+      }}
+    >
+      <aside
+        style={{
+          width: "260px",
+          backgroundColor: "white",
+          borderRight: "1px solid #e5e7eb",
+          display: "flex",
+          flexDirection: "column",
+          padding: "30px 20px",
+          flexShrink: 0,
+        }}
+      >
+        <div
+          style={{
+            color: "#2563eb",
+            fontWeight: "900",
+            fontStyle: "italic",
+            fontSize: "22px",
+            marginBottom: "40px",
+          }}
+        >
+          REPOT AI
+        </div>
+        <nav style={{ flex: 1 }}>
+          <div
+            style={{
+              padding: "12px 16px",
+              backgroundColor: "#eff6ff",
+              color: "#2563eb",
+              borderRadius: "12px",
+              fontWeight: "bold",
+              marginBottom: "8px",
+            }}
+          >
+            📂 문서
+          </div>
+          <div
+            style={{
+              padding: "12px 16px",
+              color: "#9ca3af",
+              borderRadius: "12px",
+              cursor: "pointer",
+            }}
+          >
+            💬 ChatGPT
+          </div>
+        </nav>
+      </aside>
 
-      <div style={{ padding: 16, border: "1px solid #e2e8f0", borderRadius: 12, background: "#fff" }}>
-        <div style={{ fontWeight: 800, marginBottom: 10 }}>작성 유형</div>
-        <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
-          {TYPE_OPTIONS.map((opt) => (
-            <button
-              key={opt}
-              onClick={() => setType(opt)}
-              disabled={busy}
+      <main
+        style={{
+          flex: 1,
+          padding: "20px 40px",
+          display: "flex",
+          flexDirection: "column",
+          overflow: "hidden",
+        }}
+      >
+        <h2 style={{ fontSize: "24px", fontWeight: "bold", marginBottom: "20px", color: "#111827" }}>
+          문서 종류 선택
+        </h2>
+        <div style={{ display: "flex", gap: "25px", flex: 1, minHeight: 0 }}>
+          <div
+            style={{
+              flex: 1,
+              display: "flex",
+              flexDirection: "column",
+              backgroundColor: "white",
+              padding: "25px",
+              borderRadius: "32px",
+              border: "1px solid #e5e7eb",
+              overflow: "hidden",
+            }}
+          >
+            <div
               style={{
-                padding: "10px 12px",
-                borderRadius: 10,
-                border: opt === type ? "2px solid #1e40af" : "1px solid #cbd5e1",
-                background: opt === type ? "#eff6ff" : "#fff",
-                fontWeight: 800,
-                cursor: busy ? "not-allowed" : "pointer",
+                display: "grid",
+                gridTemplateColumns: "repeat(2, 1fr)",
+                gap: "15px",
+                overflowY: "auto",
+                flex: 1,
+                paddingRight: "5px",
+                marginBottom: "20px",
               }}
             >
-              {opt}
+              {categories.map((cat) => (
+                <div
+                  key={cat.name}
+                  onClick={() => handleCardClick(cat)}
+                  style={{
+                    height: "130px",
+                    borderRadius: "24px",
+                    cursor: "pointer",
+                    display: "flex",
+                    flexDirection: "column",
+                    alignItems: "center",
+                    justifyContent: "center",
+                    border: selectedName === cat.name ? "2px solid #2563eb" : "1px solid #f3f4f6",
+                    backgroundColor: selectedName === cat.name ? "white" : "#f9fafb",
+                  }}
+                >
+                  <span style={{ fontSize: "36px", marginBottom: "8px" }}>{cat.icon}</span>
+                  <span
+                    style={{
+                      fontWeight: "bold",
+                      color: selectedName === cat.name ? "#2563eb" : "#6b7280",
+                    }}
+                  >
+                    {cat.name}
+                  </span>
+                </div>
+              ))}
+            </div>
+            <input
+              type="file"
+              ref={fileInputRef}
+              style={{ display: "none" }}
+              accept="application/pdf"
+              onChange={handleFileChange}
+            />
+            <button
+              onClick={handleAnalyzeClick}
+              style={{
+                width: "100%",
+                padding: "20px",
+                backgroundColor: "#2563eb",
+                color: "white",
+                border: "none",
+                borderRadius: "20px",
+                fontSize: "18px",
+                fontWeight: "bold",
+                cursor: "pointer",
+                boxShadow: "0 10px 25px rgba(37, 99, 235, 0.3)",
+              }}
+            >
+              이 양식으로 분석 시작하기
             </button>
-          ))}
-        </div>
+          </div>
 
-        <div style={{ marginTop: 18, display: "flex", gap: 10, flexWrap: "wrap" }}>
-          <button
-            onClick={goDefault}
-            disabled={busy}
+          <div
             style={{
-              padding: "12px 14px",
-              borderRadius: 10,
-              border: "1px solid #cbd5e1",
-              background: "#0f172a",
-              color: "#fff",
-              fontWeight: 900,
-              cursor: busy ? "not-allowed" : "pointer",
+              flex: 1,
+              backgroundColor: "white",
+              borderRadius: "32px",
+              border: "1px solid #e5e7eb",
+              padding: "8px",
+              display: "flex",
+              flexDirection: "column",
             }}
           >
-            기본 템플릿으로 시작
-          </button>
-
-          <label
-            style={{
-              padding: "12px 14px",
-              borderRadius: 10,
-              border: "1px dashed #1e40af",
-              background: "#fff",
-              color: "#1e40af",
-              fontWeight: 900,
-              cursor: busy ? "not-allowed" : "pointer",
-            }}
-          >
-            내 DOCX 템플릿 업로드
-            <input type="file" accept=".docx" onChange={onUploadTemplate} disabled={busy} hidden />
-          </label>
+            <div
+              style={{
+                flex: 1,
+                backgroundColor: "#f3f4f6",
+                borderRadius: "26px",
+                overflow: "hidden",
+                border: "1px solid #eee",
+                display: "flex",
+              }}
+            >
+              <iframe
+                key={selectedPdf}
+                src={`${selectedPdf}#toolbar=0&navpanes=0&view=FitH`}
+                style={{ width: "100%", height: "100%", border: "none" }}
+              />
+            </div>
+            <div style={{ padding: "10px 0 8px", textAlign: "center" }}>
+              <span style={{ fontSize: "11px", color: "#9ca3af", fontWeight: "bold" }}>
+                미리보기:{" "}
+              </span>
+              <span style={{ fontSize: "16px", color: "#2563eb", fontWeight: "bold" }}>
+                {selectedName}
+              </span>
+            </div>
+          </div>
         </div>
-
-        <div style={{ marginTop: 12, color: "#475569", fontSize: 13 }}>
-          {busy ? "처리 중..." : "DOCX 업로드는 여기서 됩니다. PDF 업로드는 다음 화면에서 합니다."}
-        </div>
-        {status && <div style={{ marginTop: 8, color: "#e11d48", fontWeight: 800 }}>{status}</div>}
-      </div>
+      </main>
     </div>
   );
 }
