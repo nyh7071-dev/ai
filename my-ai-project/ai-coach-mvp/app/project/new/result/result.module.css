@@ -11,6 +11,7 @@
   border-right: 1px solid #ddd;
   display: flex;
   flex-direction: column;
+  min-height: 100vh;
 }
 
 .sidebarHeader {
@@ -33,28 +34,19 @@
 
 .uploadButtons {
   display: flex;
-  gap: 10px;
-  flex-wrap: wrap;
+  gap: 8px;
+  flex-wrap: nowrap;
 }
 
 .docxUpload {
-  padding: 10px 12px;
+  padding: 8px 12px;
   border-radius: 10px;
   border: 1px dashed #1e40af;
   background: #fff;
   color: #1e40af;
-  font-weight: 900;
+  font-weight: 800;
   cursor: pointer;
-}
-
-.pdfUpload {
-  padding: 10px 12px;
-  border-radius: 10px;
-  border: 1px solid #cbd5e1;
-  background: #0f172a;
-  color: #fff;
-  font-weight: 900;
-  cursor: pointer;
+  font-size: 12px;
 }
 
 .loadingNote {
@@ -111,4 +103,55 @@
   font-weight: 800;
   text-align: center;
   pointer-events: none;
+}
+
+.chatForm {
+  border-top: 1px solid #e2e8f0;
+  padding: 12px;
+  margin-top: auto;
+}
+
+.chatInputRow {
+  display: flex;
+  gap: 8px;
+  align-items: flex-start;
+}
+
+.chatInput {
+  width: 100%;
+  resize: none;
+  border-radius: 8px;
+  border: 1px solid #cbd5e1;
+  padding: 8px;
+  font-size: 12px;
+}
+
+.chatInput:focus {
+  outline: none;
+  border-color: #3b82f6;
+}
+
+.chatUpload {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 8px 10px;
+  border-radius: 8px;
+  border: 1px solid #cbd5e1;
+  background: #f8fafc;
+  font-size: 12px;
+  font-weight: 700;
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.chatButton {
+  margin-top: 8px;
+  width: 100%;
+  border-radius: 8px;
+  background: #2563eb;
+  padding: 8px;
+  font-size: 12px;
+  font-weight: 700;
+  color: #fff;
 }
