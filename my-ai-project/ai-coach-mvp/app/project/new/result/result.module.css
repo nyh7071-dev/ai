@@ -108,17 +108,7 @@
 
 .chatForm {
   border-top: 1px solid #e2e8f0;
-  background: #fff;
   padding: 12px;
-  margin-top: auto;
-  position: sticky;
-  bottom: 0;
-}
-
-.chatInputRow {
-  display: flex;
-  gap: 8px;
-  align-items: flex-start;
 }
 
 .chatInput {
@@ -133,20 +123,6 @@
 .chatInput:focus {
   outline: none;
   border-color: #3b82f6;
-}
-
-.chatUpload {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  padding: 8px 10px;
-  border-radius: 8px;
-  border: 1px solid #cbd5e1;
-  background: #f8fafc;
-  font-size: 12px;
-  font-weight: 700;
-  cursor: pointer;
-  white-space: nowrap;
 }
 
 .chatButton {
