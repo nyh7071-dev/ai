@@ -114,10 +114,12 @@ function WorkspaceImpl() {
 
   const extractPdfText = useCallback(async (file: File) => {
     const pdfjs = await import("pdfjs-dist/legacy/build/pdf");
-    pdfjs.GlobalWorkerOptions.workerSrc = new URL(
-      "pdfjs-dist/build/pdf.worker.min.js",
-      import.meta.url
-    ).toString();
+    if (pdfjs.GlobalWorkerOptions && !pdfjs.GlobalWorkerOptions.workerSrc) {
+      pdfjs.GlobalWorkerOptions.workerSrc = new URL(
+        "pdfjs-dist/legacy/build/pdf.worker.min.js",
+        import.meta.url
+      ).toString();
+    }
 
     const arrayBuffer = await file.arrayBuffer();
     const pdf = await pdfjs.getDocument({ data: arrayBuffer }).promise;
@@ -369,6 +371,11 @@ function WorkspaceImpl() {
               DOCX 템플릿 업로드
               <input type="file" accept=".docx" hidden onChange={onUploadDocxTemplateHere} />
             </label>
+
+            <label className={styles.pdfUpload}>
+              PDF/DOCX 업로드
+              <input type="file" accept=".pdf,.docx" hidden onChange={onUploadPdf} />
+            </label>
           </div>
 
           {isLoading && <div className={styles.loadingNote}>{loadingMessage || "처리 중..."}</div>}
@@ -388,19 +395,13 @@ function WorkspaceImpl() {
         </div>
 
         <form onSubmit={onChatSubmit} className={styles.chatForm}>
-          <div className={styles.chatInputRow}>
-            <textarea
-              value={chatInput}
-              onChange={(e) => setChatInput(e.target.value)}
-              placeholder="AI에게 수정 요청을 입력하세요..."
-              rows={3}
-              className={styles.chatInput}
-            />
-            <label className={styles.chatUpload}>
-              파일 업로드
-              <input type="file" accept=".pdf,.docx" hidden onChange={onUploadPdf} />
-            </label>
-          </div>
+          <textarea
+            value={chatInput}
+            onChange={(e) => setChatInput(e.target.value)}
+            placeholder="AI에게 수정 요청을 입력하세요..."
+            rows={3}
+            className={styles.chatInput}
+          />
           <button type="submit" className={styles.chatButton}>
             요청 보내기
           </button>
