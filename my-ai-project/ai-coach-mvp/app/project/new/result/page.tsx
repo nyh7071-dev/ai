@@ -115,7 +115,10 @@ function WorkspaceImpl() {
   const extractPdfText = useCallback(async (file: File) => {
     const pdfjs = await import("pdfjs-dist/legacy/build/pdf");
     if (pdfjs.GlobalWorkerOptions && !pdfjs.GlobalWorkerOptions.workerSrc) {
-      pdfjs.GlobalWorkerOptions.workerSrc = `https://cdnjs.cloudflare.com/ajax/libs/pdf.js/${pdfjs.version}/pdf.worker.min.js`;
+      pdfjs.GlobalWorkerOptions.workerSrc = new URL(
+        "pdfjs-dist/legacy/build/pdf.worker.min.js",
+        import.meta.url
+      ).toString();
     }
 
     const arrayBuffer = await file.arrayBuffer();
