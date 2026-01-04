@@ -1,6 +1,6 @@
 'use client';
 import { useRouter, useSearchParams } from 'next/navigation';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { supabase } from '@/lib/supabase';
 
 export default function InputPage() {
@@ -10,6 +10,33 @@ export default function InputPage() {
 
   const [formData, setFormData] = useState({ subject: '', assertion: '', keywords: '' });
   const [loading, setLoading] = useState(false);
+  const [hasSavedDraft, setHasSavedDraft] = useState(false);
+
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    const saved = window.localStorage.getItem('repot-input-draft');
+    setHasSavedDraft(Boolean(saved));
+  }, []);
+
+  const loadPreviousData = () => {
+    if (typeof window === 'undefined') return;
+    const saved = window.localStorage.getItem('repot-input-draft');
+    if (!saved) {
+      alert('이전에 저장된 데이터가 없습니다.');
+      return;
+    }
+    try {
+      const parsed = JSON.parse(saved) as { subject: string; assertion: string; keywords: string };
+      setFormData({
+        subject: parsed.subject || '',
+        assertion: parsed.assertion || '',
+        keywords: parsed.keywords || '',
+      });
+    } catch (err) {
+      console.error(err);
+      alert('이전 데이터를 불러오는 데 실패했습니다.');
+    }
+  };
 
   const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
@@ -29,6 +56,11 @@ export default function InputPage() {
 
       if (error) throw error;
 
+      if (typeof window !== 'undefined') {
+        window.localStorage.setItem('repot-input-draft', JSON.stringify(formData));
+        setHasSavedDraft(true);
+      }
+
       alert("정보가 저장되었습니다!");
       // 다음 화면으로 projectId를 들고 이동!
       router.push(`/project/new/upload?projectId=${data.id}`);
@@ -43,7 +75,17 @@ export default function InputPage() {
   return (
     <div className="min-h-screen bg-gray-50 p-8 text-black">
       <div className="max-w-2xl mx-auto bg-white p-8 rounded-2xl shadow-sm border border-gray-200">
-        <h1 className="text-2xl font-bold mb-6">🖋️ 과제 내용 입력</h1>
+        <div className="flex items-center justify-between mb-6">
+          <h1 className="text-2xl font-bold">🖋️ 과제 내용 입력</h1>
+          <button
+            type="button"
+            onClick={loadPreviousData}
+            disabled={!hasSavedDraft || loading}
+            className="px-4 py-2 rounded-lg border border-gray-300 text-sm font-semibold text-gray-700 hover:bg-gray-50 disabled:cursor-not-allowed disabled:text-gray-400"
+          >
+            이전 데이터 불러오기
+          </button>
+        </div>
         <form onSubmit={handleSubmit} className="space-y-6">
           <div>
             <label className="block text-sm font-bold mb-2">과제 주제</label>
