@@ -305,7 +305,9 @@ function WorkspaceImpl() {
         setLoadError("DOCX 업로드/저장 실패. 콘솔(F12) 확인.");
         setMessages((prev) => [...prev, { role: "ai", text: "DOCX 업로드/저장 실패. 콘솔(F12) 확인." }]);
       } finally {
-        e.currentTarget.value = "";
+        if (e.currentTarget) {
+          e.currentTarget.value = "";
+        }
         setIsLoading(false);
         setLoadingMessage(null);
       }
@@ -331,7 +333,9 @@ function WorkspaceImpl() {
         setLoadError("PDF 분석 실패. 콘솔(F12) 확인.");
         setMessages((prev) => [...prev, { role: "ai", text: "PDF 분석 실패. 콘솔(F12) 확인." }]);
       } finally {
-        e.currentTarget.value = "";
+        if (e.currentTarget) {
+          e.currentTarget.value = "";
+        }
       }
     },
     [applyAiToTemplate, extractDocxText, extractPdfText]
