@@ -1,6 +1,6 @@
 "use client";
 
-import { Suspense, useCallback, useEffect, useRef, useState } from "react";
+import { Suspense, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import dynamic from "next/dynamic";
 import { getTemplateFromIDB, saveTemplateToIDB } from "@/lib/templateStore";
@@ -115,7 +115,10 @@ function WorkspaceImpl() {
   const extractPdfText = useCallback(async (file: File) => {
     const pdfjs = await import("pdfjs-dist/legacy/build/pdf");
     if (pdfjs.GlobalWorkerOptions && !pdfjs.GlobalWorkerOptions.workerSrc) {
-      pdfjs.GlobalWorkerOptions.workerSrc = `https://cdnjs.cloudflare.com/ajax/libs/pdf.js/${pdfjs.version}/pdf.worker.min.js`;
+      pdfjs.GlobalWorkerOptions.workerSrc = new URL(
+        "pdfjs-dist/legacy/build/pdf.worker.min.js",
+        import.meta.url
+      ).toString();
     }
 
     const arrayBuffer = await file.arrayBuffer();
@@ -288,15 +291,8 @@ function WorkspaceImpl() {
         const html = await loadDocxArrayBufferToHtml(buf);
         if (!html) throw new Error("DOCX 변환 결과가 비어있습니다.");
 
-        sendHtmlToIframe(html);
         setDocHTML(html);
-
-
-
-
         sendHtmlToIframe(html);
-        setDocHTML(html);
-
 
         const newId = await saveTemplateToIDB(file.name, buf);
         setActiveTemplateId(newId);
@@ -309,7 +305,9 @@ function WorkspaceImpl() {
         setLoadError("DOCX 업로드/저장 실패. 콘솔(F12) 확인.");
         setMessages((prev) => [...prev, { role: "ai", text: "DOCX 업로드/저장 실패. 콘솔(F12) 확인." }]);
       } finally {
-        e.currentTarget.value = "";
+        if (e.currentTarget) {
+          e.currentTarget.value = "";
+        }
         setIsLoading(false);
         setLoadingMessage(null);
       }
@@ -335,7 +333,9 @@ function WorkspaceImpl() {
         setLoadError("PDF 분석 실패. 콘솔(F12) 확인.");
         setMessages((prev) => [...prev, { role: "ai", text: "PDF 분석 실패. 콘솔(F12) 확인." }]);
       } finally {
-        e.currentTarget.value = "";
+        if (e.currentTarget) {
+          e.currentTarget.value = "";
+        }
       }
     },
     [applyAiToTemplate, extractDocxText, extractPdfText]
@@ -355,137 +355,26 @@ function WorkspaceImpl() {
     [applyAiToTemplate, chatInput, sourceText]
   );
 
-
-
-  const onChatSubmit = useCallback(
-    async (e: React.FormEvent) => {
-      e.preventDefault();
-      const input = chatInput.trim();
-      if (!input) return;
-
-      setChatInput("");
-      setMessages((prev) => [...prev, { role: "user", text: input }]);
-
-      await applyAiToTemplate(sourceText, input);
-    },
-    [applyAiToTemplate, chatInput, sourceText]
-  );
-
   const iframeSrcDoc = useMemo(() => IFRAME_SRC_DOC, []);
 
   return (
-    <div className="flex h-screen w-screen overflow-hidden bg-gray-100">
-      <aside className="flex w-[380px] flex-col border-r border-gray-300 bg-white">
-        <div className="bg-blue-900 px-5 py-4 font-black text-white">
-          WORKSPACE
-          <div className="mt-1 text-xs opacity-90">
-
-
-          WORKSPACE
-          <div className="mt-1 text-xs opacity-90">
-
-
-    <div className="flex h-screen w-screen overflow-hidden bg-gray-100">
-      <aside className="flex w-[380px] flex-col border-r border-gray-300 bg-white">
-        <div className="bg-blue-900 px-5 py-4 font-black text-white">
-          WORKSPACE
-          <div className="mt-1 text-xs opacity-90">
-
-
-    <div className="flex h-screen w-screen overflow-hidden bg-gray-100">
-      <aside className="flex w-[380px] flex-col border-r border-gray-300 bg-white">
-        <div className="bg-blue-900 px-5 py-4 font-black text-white">
-          WORKSPACE
-          <div className="mt-1 text-xs opacity-90">
-
     <div className={styles.page}>
       <aside className={styles.sidebar}>
         <div className={styles.sidebarHeader}>
           WORKSPACE
-          <div className={styles.sidebarHeaderMeta}>
-
-
-            type: {type} / templateId: {activeTemplateId ? "있음" : "없음"}
-          </div>
+          <div className={styles.sidebarHeaderMeta}>현재 템플릿: {type}</div>
         </div>
 
-        <div className="border-b border-gray-200 p-4">
-          <div className="flex flex-wrap gap-2.5">
-            <label className="cursor-pointer rounded-lg border border-dashed border-blue-900 bg-white px-3 py-2.5 font-black text-blue-900">
-
-
-
-
-        <div className="border-b border-gray-200 p-4">
-          <div className="flex flex-wrap gap-2.5">
-            <label className="cursor-pointer rounded-lg border border-dashed border-blue-900 bg-white px-3 py-2.5 font-black text-blue-900">
-
-
-        <div className="border-b border-gray-200 p-4">
-          <div className="flex flex-wrap gap-2.5">
-            <label className="cursor-pointer rounded-lg border border-dashed border-blue-900 bg-white px-3 py-2.5 font-black text-blue-900">
         <div className={styles.uploadSection}>
           <div className={styles.uploadButtons}>
             <label className={styles.docxUpload}>
-
-
               DOCX 템플릿 업로드
               <input type="file" accept=".docx" hidden onChange={onUploadDocxTemplateHere} />
             </label>
-
-            <label className="cursor-pointer rounded-lg border border-slate-300 bg-slate-900 px-3 py-2.5 font-black text-white">
-              PDF/DOCX 업로드
-              <input type="file" accept=".pdf,.docx" hidden onChange={onUploadPdf} />
-
-
-
-
-            <label className="cursor-pointer rounded-lg border border-slate-300 bg-slate-900 px-3 py-2.5 font-black text-white">
-
-
-            <label className="cursor-pointer rounded-lg border border-slate-300 bg-slate-900 px-3 py-2.5 font-black text-white">
-
-            <label className={styles.pdfUpload}>
-
-
-              PDF 업로드
-              <input type="file" accept=".pdf" hidden onChange={onUploadPdf} />
-            </label>
           </div>
 
-          {isLoading && (
-            <div className="mt-2.5 font-extrabold text-rose-600">
-
-
-
-
-            <div className="mt-2.5 font-extrabold text-rose-600">
-
-            <div className="mt-2.5 font-extrabold text-rose-600">
-
-            <div className={styles.loadingNote}>
-
-
-              {loadingMessage || "처리 중..."}
-            </div>
-          )}
+          {isLoading && <div className={styles.loadingNote}>{loadingMessage || "처리 중..."}</div>}
         </div>
-
-
-
-
-
-
-
-        <div className="flex-1 overflow-y-auto p-4 text-xs">
-          {messages.map((m, i) => (
-            <div
-              key={i}
-              className={`mb-2.5 rounded-lg border border-slate-200 p-3 leading-6 ${
-                m.role === "user" ? "bg-blue-50" : "bg-slate-50"
-
-
-
 
         <div className={styles.messageList}>
           {messages.map((m, i) => (
@@ -493,8 +382,6 @@ function WorkspaceImpl() {
               key={i}
               className={`${styles.messageItem} ${
                 m.role === "user" ? styles.messageUser : styles.messageAi
-
-
               }`}
             >
               {m.text}
@@ -502,56 +389,30 @@ function WorkspaceImpl() {
           ))}
         </div>
 
-        <form onSubmit={onChatSubmit} className="border-t border-slate-200 p-3">
-          <textarea
-            value={chatInput}
-            onChange={(e) => setChatInput(e.target.value)}
-            placeholder="AI에게 수정 요청을 입력하세요..."
-            rows={3}
-            className="w-full resize-none rounded-lg border border-slate-300 p-2 text-xs focus:border-blue-500 focus:outline-none"
-          />
-          <button
-            type="submit"
-            className="mt-2 w-full rounded-lg bg-blue-600 py-2 text-xs font-bold text-white"
-          >
+        <form onSubmit={onChatSubmit} className={styles.chatForm}>
+          <div className={styles.chatInputRow}>
+            <textarea
+              value={chatInput}
+              onChange={(e) => setChatInput(e.target.value)}
+              placeholder="AI에게 수정 요청을 입력하세요..."
+              rows={3}
+              className={styles.chatInput}
+            />
+            <label className={styles.chatUpload}>
+              파일 업로드
+              <input type="file" accept=".pdf,.docx" hidden onChange={onUploadPdf} />
+            </label>
+          </div>
+          <button type="submit" className={styles.chatButton}>
             요청 보내기
           </button>
         </form>
       </aside>
 
-      <main className="relative flex-1 p-4">
-        <iframe ref={iframeRef} srcDoc={iframeSrcDoc} className="h-full w-full border-0" />
-        {(isLoading || loadError) && (
-          <div className="pointer-events-none absolute inset-4 flex items-center justify-center rounded-xl bg-slate-900/35 p-6 text-center font-extrabold text-white">
-
-        {(isLoading || loadError) && (
-          <div className="pointer-events-none absolute inset-4 flex items-center justify-center rounded-xl bg-slate-900/35 p-6 text-center font-extrabold text-white">
-
-        {(isLoading || loadError) && (
-          <div className="pointer-events-none absolute inset-4 flex items-center justify-center rounded-xl bg-slate-900/35 p-6 text-center font-extrabold text-white">
-
-      <main className="relative flex-1 p-4">
-        <iframe ref={iframeRef} srcDoc={iframeSrcDoc} className="h-full w-full border-0" />
-        {(isLoading || loadError) && (
-          <div className="pointer-events-none absolute inset-4 flex items-center justify-center rounded-xl bg-slate-900/35 p-6 text-center font-extrabold text-white">
-
-
-      <main className="relative flex-1 p-4">
-        <iframe ref={iframeRef} srcDoc={iframeSrcDoc} className="h-full w-full border-0" />
-        {(isLoading || loadError) && (
-          <div className="pointer-events-none absolute inset-4 flex items-center justify-center rounded-xl bg-slate-900/35 p-6 text-center font-extrabold text-white">
-
-
       <main className={styles.main}>
         <iframe ref={iframeRef} srcDoc={iframeSrcDoc} className={styles.editorFrame} />
-      <main style={{ flex: 1, padding: 18, position: "relative" }}>
-        <iframe ref={iframeRef} srcDoc={iframeSrcDoc} style={{ width: "100%", height: "100%", border: "none" }} />
-
         {(isLoading || loadError) && (
-          <div className={styles.overlay}>
-
-            {loadError || loadingMessage || "처리 중..."}
-          </div>
+          <div className={styles.overlay}>{loadError || loadingMessage || "처리 중..."}</div>
         )}
       </main>
     </div>
