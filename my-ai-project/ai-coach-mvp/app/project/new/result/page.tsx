@@ -279,7 +279,8 @@ if (pdfjs.GlobalWorkerOptions) {
 
   const onUploadDocxTemplateHere = useCallback(
     async (e: React.ChangeEvent<HTMLInputElement>) => {
-      const file = e.target.files?.[0];
+      const input = e.currentTarget;
+      const file = input.files?.[0];
       if (!file) return;
 
       setIsLoading(true);
@@ -306,7 +307,7 @@ if (pdfjs.GlobalWorkerOptions) {
         setLoadError("DOCX 업로드/저장 실패. 콘솔(F12) 확인.");
         setMessages((prev) => [...prev, { role: "ai", text: "DOCX 업로드/저장 실패. 콘솔(F12) 확인." }]);
       } finally {
-        e.currentTarget.value = "";
+        input.value = "";
         setIsLoading(false);
         setLoadingMessage(null);
       }
@@ -317,7 +318,8 @@ if (pdfjs.GlobalWorkerOptions) {
   // PDF 업로드는 네 기존 자동채움 로직을 여기 붙이면 됩니다.
   const onUploadPdf = useCallback(
     async (e: React.ChangeEvent<HTMLInputElement>) => {
-      const file = e.target.files?.[0];
+      const input = e.currentTarget;
+      const file = input.files?.[0];
       if (!file) return;
 
       setMessages((prev) => [...prev, { role: "ai", text: `PDF 업로드됨: ${file.name}` }]);
@@ -332,7 +334,7 @@ if (pdfjs.GlobalWorkerOptions) {
         setLoadError("PDF 분석 실패. 콘솔(F12) 확인.");
         setMessages((prev) => [...prev, { role: "ai", text: "PDF 분석 실패. 콘솔(F12) 확인." }]);
       } finally {
-        e.currentTarget.value = "";
+        input.value = "";
       }
     },
     [applyAiToTemplate, extractDocxText, extractPdfText]
