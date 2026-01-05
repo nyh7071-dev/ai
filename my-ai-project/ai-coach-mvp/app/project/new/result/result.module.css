@@ -177,14 +177,56 @@
   padding: 30px;
   display: flex;
   justify-content: center;
+  align-items: center;
+  position: relative;
+}
+
+.editorWrapper {
+  width: 100%;
+  max-width: 850px;
+  height: 100%;
+  position: relative;
+  display: flex;
 }
 
 .editorFrame {
   width: 100%;
-  max-width: 850px;
   height: 100%;
   background: #ffffff;
   border-radius: 12px;
   border: 1px solid #e2e8f0;
   box-shadow: 0 4px 24px rgba(0, 0, 0, 0.04);
+}
+
+.overlay {
+  position: absolute;
+  inset: 0;
+  background: rgba(15, 23, 42, 0.45);
+  backdrop-filter: blur(2px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 12px;
+}
+
+.overlayContent {
+  text-align: center;
+  color: #f8fafc;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 18px 24px;
+  border-radius: 12px;
+  background: rgba(15, 23, 42, 0.6);
+  box-shadow: 0 12px 30px rgba(15, 23, 42, 0.35);
+}
+
+.overlayTitle {
+  font-size: 18px;
+  font-weight: 700;
+}
+
+.overlaySubtitle {
+  font-size: 13px;
+  color: rgba(226, 232, 240, 0.9);
 }
