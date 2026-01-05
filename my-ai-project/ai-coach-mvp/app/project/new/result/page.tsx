@@ -406,10 +406,19 @@ if (pdfjs.GlobalWorkerOptions) {
       </aside>
 
       <main className={styles.main}>
-        <iframe ref={iframeRef} srcDoc={iframeSrcDoc} className={styles.editorFrame} />
-        {(isLoading || loadError) && (
-          <div className={styles.overlay}>{loadError || loadingMessage || "처리 중..."}</div>
-        )}
+        <div className={styles.editorWrapper}>
+          <iframe ref={iframeRef} srcDoc={iframeSrcDoc} className={styles.editorFrame} />
+          {(isLoading || loadError) && (
+            <div className={styles.overlay}>
+              <div className={styles.overlayContent}>
+                <div className={styles.overlayTitle}>
+                  {loadError || loadingMessage || "AI 레포트를 분석하는 중..."}
+                </div>
+                <div className={styles.overlaySubtitle}>잠시만 기다려 주세요.</div>
+              </div>
+            </div>
+          )}
+        </div>
       </main>
     </div>
   );
