@@ -1,217 +1,190 @@
-:global(html) {
+/* 1. 기본 스타일 및 초기화: 깨짐 방지 핵심 */
+:global(*) {
+  box-sizing: border-box !important;
   margin: 0;
-  height: 100%;
-  overflow: hidden;
+  padding: 0;
 }
 
-:global(body) {
-  margin: 0;
+:global(html), :global(body) {
   height: 100%;
   overflow: hidden;
-}
-
-:global(#__next) {
-  height: 100%;
+  font-family: "Pretendard Variable", -apple-system, sans-serif;
+  background-color: #f1f5f9; /* 첫 번째 페이지 배경색과 통일 */
+  -webkit-font-smoothing: antialiased;
 }
 
 .page {
   display: flex;
   width: 100vw;
   height: 100vh;
-  background: linear-gradient(180deg, #f8fafc 0%, #eef2f7 100%);
-  gap: 18px;
-  padding: 18px;
-  box-sizing: border-box;
 }
 
+/* 2. 사이드바: 320px 슬림 가로폭 유지 */
 .sidebar {
-  width: 360px;
-  background: #fff;
-  border: 1px solid #e2e8f0;
-  border-radius: 20px;
-  box-shadow: 0 12px 30px rgba(15, 23, 42, 0.08);
+  width: 320px;
+  min-width: 320px;
+  max-width: 320px;
+  height: 100%;
+  background: #ffffff;
   display: flex;
   flex-direction: column;
-  min-height: 100vh;
-  overflow: hidden;
+  border-right: 1px solid #e2e8f0;
+  box-shadow: 10px 0 30px rgba(0, 0, 0, 0.02);
 }
 
+/* 3. 헤더: 높이 최소화 + 강력한 폰트 */
 .sidebarHeader {
-  padding: 20px 18px;
-  background: linear-gradient(135deg, #1d4ed8 0%, #2563eb 55%, #38bdf8 100%);
-  color: #fff;
+  padding: 20px 20px 14px;
+  background: #0f172a; /* 다크 테마 적용 */
+  color: #ffffff;
+  flex-shrink: 0;
+}
+
+.sidebarHeader h1 {
+  font-size: 19px;
   font-weight: 900;
-  font-size: 18px;
+  line-height: 1.1;
+  letter-spacing: -0.04em;
+  display: flex;
+  flex-direction: column;
+  gap: 6px; /* 텍스트와 배지 겹침 방지 */
 }
 
 .sidebarHeaderMeta {
   display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  margin-top: 8px;
-  padding: 4px 10px;
-  border-radius: 999px;
-  background: rgba(255, 255, 255, 0.2);
-  font-size: 12px;
-  opacity: 0.9;
+  width: fit-content;
+  padding: 3px 8px;
+  border-radius: 4px;
+  background: rgba(59, 130, 246, 0.3);
+  color: #93c5fd;
+  font-size: 10px;
+  font-weight: 800;
+  text-transform: uppercase;
 }
 
+/* 4. 업로드 섹션: 버튼 겹침 해결 */
 .uploadSection {
-  padding: 16px 18px 10px;
-  border-bottom: 1px solid #eef2f7;
-  background: #f8fafc;
+  padding: 16px 20px;
+  flex-shrink: 0;
+  border-bottom: 1px solid #f1f5f9;
 }
 
 .uploadButtons {
   display: flex;
-  gap: 10px;
-  flex-wrap: nowrap;
-}
-
-.docxUpload {
-  flex: 1;
-  padding: 10px 12px;
-  border-radius: 12px;
-  border: 1px dashed #2563eb;
-  background: #fff;
-  color: #1d4ed8;
-  font-weight: 800;
-  cursor: pointer;
-  font-size: 12px;
-  text-align: center;
-  transition: all 0.2s ease;
-}
-
-.docxUpload:hover {
-  border-color: #1d4ed8;
-  box-shadow: 0 6px 16px rgba(37, 99, 235, 0.18);
-  transform: translateY(-1px);
-}
-
-.pdfUpload {
-  flex: 1;
-  padding: 10px 12px;
-  border-radius: 12px;
-  border: 1px solid #bfdbfe;
-  background: #eff6ff;
-  color: #1d4ed8;
-  font-weight: 800;
-  cursor: pointer;
-  font-size: 12px;
-  text-align: center;
-  transition: all 0.2s ease;
-}
-
-.pdfUpload:hover {
-  background: #dbeafe;
-  box-shadow: 0 6px 16px rgba(37, 99, 235, 0.2);
-  transform: translateY(-1px);
-}
-
-.loadingNote {
-  margin-top: 10px;
-  color: #dc2626;
-  font-weight: 700;
-  font-size: 12px;
-}
-
-.messageList {
-  flex: 1;
-  min-height: 0;
-  overflow-y: auto;
-  padding: 16px 18px;
-  font-size: 13px;
-  background: #fff;
-}
-
-.messageItem {
-  margin-bottom: 10px;
-  padding: 12px 14px;
-  border-radius: 14px;
-  border: 1px solid #e2e8f0;
-  line-height: 1.6;
-  box-shadow: 0 6px 14px rgba(15, 23, 42, 0.06);
-}
-
-.messageAi {
-  background: #f8fafc;
-}
-
-.messageUser {
-  background: #eff6ff;
-  border-color: #bfdbfe;
-}
-
-.main {
-  flex: 1;
-  padding: 0;
-  position: relative;
-  background: #fff;
-  border-radius: 24px;
-  border: 1px solid #e2e8f0;
-  box-shadow: 0 14px 30px rgba(15, 23, 42, 0.08);
-  overflow: hidden;
-}
-
-.editorFrame {
   width: 100%;
-  height: 100%;
-  border: none;
+  padding: 3px;
+  background: #f8fafc;
+  border: 1px solid #e2e8f0;
+  border-radius: 10px;
+  gap: 4px;
 }
 
-.overlay {
-  position: absolute;
-  inset: 0;
-  background: rgba(15, 23, 42, 0.4);
-  backdrop-filter: blur(2px);
+.docxUpload, .pdfUpload {
+  flex: 1;
+  min-width: 0; /* 텍스트가 박스를 뚫고 나가는 것 방지 */
+  height: 38px;
+  border-radius: 7px;
+  font-size: 11px;
+  font-weight: 700;
   display: flex;
   align-items: center;
   justify-content: center;
-  padding: 24px;
-  color: #fff;
-  font-weight: 800;
   text-align: center;
-  pointer-events: none;
+  cursor: pointer;
+  transition: all 0.2s;
+  line-height: 1.2;
 }
 
+/* DOCX: 비활성 느낌 제거 및 세련된 화이트 */
+.docxUpload {
+  background: #ffffff;
+  border: 1px solid #cbd5e1;
+  color: #475569;
+}
+
+.pdfUpload {
+  background: #2563eb; /* 포인트 블루 */
+  color: #ffffff;
+  border: none;
+}
+
+/* 5. 채팅 메시지 리스트 */
+.messageList {
+  flex: 1;
+  overflow-y: auto;
+  padding: 16px 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+/* 6. 하단 입력부: 화살표 제거된 슬림 캡슐 */
 .chatForm {
-  border-top: 1px solid #e2e8f0;
-  padding: 14px 18px 18px;
-  background: #f8fafc;
+  padding: 12px 20px 24px;
+  background: #fff;
+  border-top: 1px solid #f1f5f9;
+  flex-shrink: 0;
 }
 
 .chatInput {
   width: 100%;
+  height: 44px; /* 슬림 높이 */
+  border-radius: 22px;
+  border: 1.5px solid #e2e8f0;
+  padding: 11px 20px;
+  font-family: inherit;
+  font-size: 14px;
+  color: #334155;
+  background: #f8fafc;
   resize: none;
-  border-radius: 12px;
-  border: 1px solid #cbd5e1;
-  padding: 10px 12px;
-  font-size: 13px;
-  min-height: 88px;
-  background: #fff;
+  transition: all 0.2s;
+  
+  /* 스크롤바 화살표 제거 */
+  -ms-overflow-style: none; /* IE/Edge */
+  scrollbar-width: none; /* Firefox */
+}
+
+/* Chrome/Safari 스크롤바 제거 */
+.chatInput::-webkit-scrollbar {
+  display: none;
 }
 
 .chatInput:focus {
   outline: none;
-  border-color: #3b82f6;
-  box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.15);
+  border-color: #2563eb;
+  background: #fff;
+  box-shadow: 0 4px 12px rgba(37, 99, 235, 0.08);
 }
 
 .chatButton {
   margin-top: 10px;
   width: 100%;
-  border-radius: 12px;
-  background: linear-gradient(135deg, #2563eb 0%, #38bdf8 100%);
-  padding: 10px 12px;
-  font-size: 13px;
-  font-weight: 800;
-  color: #fff;
+  height: 44px;
+  border-radius: 22px;
+  background: #0f172a; /* 헤더와 통일감 */
+  color: #ffffff;
+  font-size: 14px;
+  font-weight: 700;
   border: none;
   cursor: pointer;
-  transition: transform 0.2s ease, box-shadow 0.2s ease;
+  transition: all 0.2s;
 }
 
-.chatButton:hover {
-  transform: translateY(-1px);
-  box-shadow: 0 10px 24px rgba(37, 99, 235, 0.3);
+/* 7. 메인 워크스페이스: 첫 번째 페이지 카드 감성 */
+.main {
+  flex: 1;
+  background: #f1f5f9;
+  padding: 30px;
+  display: flex;
+  justify-content: center;
+}
+
+.editorFrame {
+  width: 100%;
+  max-width: 850px;
+  height: 100%;
+  background: #ffffff;
+  border-radius: 12px;
+  border: 1px solid #e2e8f0;
+  box-shadow: 0 4px 24px rgba(0, 0, 0, 0.04);
 }
