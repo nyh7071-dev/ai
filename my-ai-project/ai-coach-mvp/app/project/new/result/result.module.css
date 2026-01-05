@@ -1,3 +1,19 @@
+:global(html) {
+  margin: 0;
+  height: 100%;
+  overflow: hidden;
+}
+
+:global(body) {
+  margin: 0;
+  height: 100%;
+  overflow: hidden;
+}
+
+:global(#__next) {
+  height: 100%;
+}
+
 .page {
   display: flex;
   width: 100vw;
