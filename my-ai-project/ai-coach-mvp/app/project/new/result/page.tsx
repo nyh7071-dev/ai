@@ -113,13 +113,14 @@ function WorkspaceImpl() {
   }, []);
 
   const extractPdfText = useCallback(async (file: File) => {
-    const pdfjs = await import("pdfjs-dist/legacy/build/pdf");
-    if (pdfjs.GlobalWorkerOptions && !pdfjs.GlobalWorkerOptions.workerSrc) {
-      pdfjs.GlobalWorkerOptions.workerSrc = new URL(
-        "pdfjs-dist/legacy/build/pdf.worker.min.js",
-        import.meta.url
-      ).toString();
-    }
+   const pdfjs = await import("pdfjs-dist/build/pdf.mjs");
+if (pdfjs.GlobalWorkerOptions) {
+  pdfjs.GlobalWorkerOptions.workerSrc = new URL(
+    "pdfjs-dist/build/pdf.worker.min.mjs",
+    import.meta.url
+  ).toString();
+}
+
 
     const arrayBuffer = await file.arrayBuffer();
     const pdf = await pdfjs.getDocument({ data: arrayBuffer }).promise;
@@ -305,9 +306,7 @@ function WorkspaceImpl() {
         setLoadError("DOCX 업로드/저장 실패. 콘솔(F12) 확인.");
         setMessages((prev) => [...prev, { role: "ai", text: "DOCX 업로드/저장 실패. 콘솔(F12) 확인." }]);
       } finally {
-        if (e.currentTarget) {
-          e.currentTarget.value = "";
-        }
+        e.currentTarget.value = "";
         setIsLoading(false);
         setLoadingMessage(null);
       }
@@ -333,9 +332,7 @@ function WorkspaceImpl() {
         setLoadError("PDF 분석 실패. 콘솔(F12) 확인.");
         setMessages((prev) => [...prev, { role: "ai", text: "PDF 분석 실패. 콘솔(F12) 확인." }]);
       } finally {
-        if (e.currentTarget) {
-          e.currentTarget.value = "";
-        }
+        e.currentTarget.value = "";
       }
     },
     [applyAiToTemplate, extractDocxText, extractPdfText]
