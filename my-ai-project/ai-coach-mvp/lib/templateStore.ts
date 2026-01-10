@@ -4,6 +4,7 @@ type TemplateRecord = {
   id: string;
   name: string;
   buffer: ArrayBuffer;
+  publicUrl?: string;
   createdAt: number;
 };
 
@@ -42,10 +43,10 @@ function makeId() {
   return `${Date.now()}_${Math.random().toString(16).slice(2)}`;
 }
 
-export async function saveTemplateToIDB(name: string, buffer: ArrayBuffer) {
+export async function saveTemplateToIDB(name: string, buffer: ArrayBuffer, publicUrl?: string) {
   const db = await getDb();
   const id = makeId();
-  await db.put(STORE, { id, name, buffer, createdAt: Date.now() });
+  await db.put(STORE, { id, name, buffer, publicUrl, createdAt: Date.now() });
   return id;
 }
 
