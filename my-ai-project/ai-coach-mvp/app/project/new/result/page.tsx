@@ -88,6 +88,7 @@ function WorkspaceImpl() {
   const [isLoading, setIsLoading] = useState(false);
   const [chatInput, setChatInput] = useState("");
   const [sourceText, setSourceText] = useState("");
+  const [viewMode, setViewMode] = useState<ViewMode>("original");
   const [originalDocxUrl, setOriginalDocxUrl] = useState<string>("");
 
   const loadedKeyRef = useRef<string>("");
@@ -112,33 +113,18 @@ function WorkspaceImpl() {
   }, []);
 
   const uploadTemplateToStorage = useCallback(async (file: File) => {
-    const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
-    const supabaseKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
-    if (supabaseUrl && supabaseKey) {
-      const bucket = process.env.NEXT_PUBLIC_TEMPLATE_BUCKET || "docx-templates";
-      const { supabase } = await import("@/lib/supabase");
-      if (!supabase?.storage) throw new Error("Supabase storage client가 없습니다.");
-      const safeName = file.name.replace(/\s+/g, "_");
-      const path = `templates/${Date.now()}_${safeName}`;
-      const { error } = await supabase.storage.from(bucket).upload(path, file, {
-        cacheControl: "3600",
-        upsert: false,
-      });
-      if (error) throw error;
-      const { data } = supabase.storage.from(bucket).getPublicUrl(path);
-      if (!data?.publicUrl) throw new Error("공개 URL 생성 실패");
-      return data.publicUrl;
-    }
-
-    const formData = new FormData();
-    formData.append("file", file);
-    const res = await fetch("/api/templates/upload", {
-      method: "POST",
-      body: formData,
+    const bucket = process.env.NEXT_PUBLIC_TEMPLATE_BUCKET || "docx-templates";
+    const { supabase } = await import("@/lib/supabase");
+    if (!supabase?.storage) throw new Error("Supabase storage client가 없습니다.");
+    const safeName = file.name.replace(/\s+/g, "_");
+    const path = `templates/${Date.now()}_${safeName}`;
+    const { error } = await supabase.storage.from(bucket).upload(path, file, {
+      cacheControl: "3600",
+      upsert: false,
     });
-    if (!res.ok) throw new Error("로컬 업로드 실패");
-    const data = (await res.json()) as { publicUrl?: string };
-    if (!data.publicUrl) throw new Error("로컬 공개 URL 생성 실패");
+    if (error) throw error;
+    const { data } = supabase.storage.from(bucket).getPublicUrl(path);
+    if (!data?.publicUrl) throw new Error("공개 URL 생성 실패");
     return data.publicUrl;
   }, []);
 
@@ -391,6 +377,7 @@ if (pdfjs.GlobalWorkerOptions) {
         setTemplateAnalysis(analysis);
         sendHtmlToIframe(html);
         setOriginalDocxUrl(nextOriginalUrl);
+        setViewMode(nextOriginalUrl ? "original" : "edit");
         setLoadingMessage(null);
 
         setMessages((prev) => [
@@ -467,6 +454,7 @@ if (pdfjs.GlobalWorkerOptions) {
           `/project/new/result?type=${encodeURIComponent(type)}&templateId=${encodeURIComponent(newId)}`
         );
         setOriginalDocxUrl(publicUrl);
+        setViewMode(publicUrl ? "original" : "edit");
       } catch (err) {
         console.error(err);
         setLoadError("DOCX 업로드/저장 실패. 콘솔(F12) 확인.");
@@ -477,14 +465,7 @@ if (pdfjs.GlobalWorkerOptions) {
         setLoadingMessage(null);
       }
     },
-    [
-      loadDocxArrayBufferToHtml,
-      analyzeTemplateHTML,
-      router,
-      sendHtmlToIframe,
-      type,
-      uploadTemplateToStorage,
-    ]
+    [loadDocxArrayBufferToHtml, analyzeTemplateHTML, router, sendHtmlToIframe, type]
   );
 
   // PDF 업로드는 네 기존 자동채움 로직을 여기 붙이면 됩니다.
@@ -556,6 +537,29 @@ if (pdfjs.GlobalWorkerOptions) {
           {isLoading && <div className={styles.loadingNote}>{loadingMessage || "처리 중..."}</div>}
         </div>
 
+        <div className={styles.uploadSection}>
+          <div className={styles.uploadButtons}>
+            <button
+              type="button"
+              className={styles.docxUpload}
+              onClick={() => setViewMode("original")}
+              disabled={!viewerSrc}
+            >
+              원본 보기
+            </button>
+            <button
+              type="button"
+              className={styles.pdfUpload}
+              onClick={() => setViewMode("edit")}
+            >
+              편집 보기
+            </button>
+          </div>
+          {!viewerSrc && (
+            <div className={styles.loadingNote}>원본 미리보기는 공개 URL이 필요합니다.</div>
+          )}
+        </div>
+
         <div className={styles.messageList}>
           {messages.map((m, i) => (
             <div
@@ -585,7 +589,7 @@ if (pdfjs.GlobalWorkerOptions) {
 
       <main className={styles.main}>
         <div className={styles.editorWrapper}>
-          {viewerSrc ? (
+          {viewMode === "original" && viewerSrc ? (
             <iframe title="원본 미리보기" src={viewerSrc} className={styles.editorFrame} />
           ) : (
             <iframe ref={iframeRef} srcDoc={iframeSrcDoc} className={styles.editorFrame} />
