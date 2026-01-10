@@ -9,7 +9,6 @@ import styles from "./result.module.css";
 type TemplateType = "레포트" | "실험보고서" | "논문" | "강의노트" | "문헌고찰";
 type ChatMsg = { role: "ai" | "user"; text: string };
 type LabelMapping = { label: string; value: string };
-type ViewMode = "original" | "edit";
 
 const TYPE_TO_DEFAULT_DOCX: Record<TemplateType, string> = {
   레포트: "report",
@@ -466,14 +465,7 @@ if (pdfjs.GlobalWorkerOptions) {
         setLoadingMessage(null);
       }
     },
-    [
-      loadDocxArrayBufferToHtml,
-      analyzeTemplateHTML,
-      router,
-      sendHtmlToIframe,
-      type,
-      uploadTemplateToStorage,
-    ]
+    [loadDocxArrayBufferToHtml, analyzeTemplateHTML, router, sendHtmlToIframe, type]
   );
 
   // PDF 업로드는 네 기존 자동채움 로직을 여기 붙이면 됩니다.
