@@ -8,6 +8,7 @@ import styles from "./result.module.css";
 
 type TemplateType = "레포트" | "실험보고서" | "논문" | "강의노트" | "문헌고찰";
 type ChatMsg = { role: "ai" | "user"; text: string };
+type LabelMapping = { label: string; value: string };
 
 const TYPE_TO_DEFAULT_DOCX: Record<TemplateType, string> = {
   레포트: "report",
@@ -87,6 +88,7 @@ function WorkspaceImpl() {
   const [isLoading, setIsLoading] = useState(false);
   const [chatInput, setChatInput] = useState("");
   const [sourceText, setSourceText] = useState("");
+  const [originalDocxUrl, setOriginalDocxUrl] = useState<string>("");
 
   const loadedKeyRef = useRef<string>("");
 
@@ -105,11 +107,104 @@ function WorkspaceImpl() {
     return s;
   };
 
+  const getOfficeViewerUrl = useCallback((url: string) => {
+    return `https://view.officeapps.live.com/op/embed.aspx?src=${encodeURIComponent(url)}`;
+  }, []);
+
+  const uploadTemplateToStorage = useCallback(async (file: File) => {
+    const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
+    const supabaseKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
+    if (supabaseUrl && supabaseKey) {
+      const bucket = process.env.NEXT_PUBLIC_TEMPLATE_BUCKET || "docx-templates";
+      const { supabase } = await import("@/lib/supabase");
+      if (!supabase?.storage) throw new Error("Supabase storage client가 없습니다.");
+      const safeName = file.name.replace(/\s+/g, "_");
+      const path = `templates/${Date.now()}_${safeName}`;
+      const { error } = await supabase.storage.from(bucket).upload(path, file, {
+        cacheControl: "3600",
+        upsert: false,
+      });
+      if (error) throw error;
+      const { data } = supabase.storage.from(bucket).getPublicUrl(path);
+      if (!data?.publicUrl) throw new Error("공개 URL 생성 실패");
+      return data.publicUrl;
+    }
+
+    const formData = new FormData();
+    formData.append("file", file);
+    const res = await fetch("/api/templates/upload", {
+      method: "POST",
+      body: formData,
+    });
+    if (!res.ok) throw new Error("로컬 업로드 실패");
+    const data = (await res.json()) as { publicUrl?: string };
+    if (!data.publicUrl) throw new Error("로컬 공개 URL 생성 실패");
+    return data.publicUrl;
+  }, []);
+
   const loadDocxArrayBufferToHtml = useCallback(async (arrayBuffer: ArrayBuffer) => {
     // mammoth는 동적 import가 안전합니다.
     const mammoth = await import("mammoth");
     const result = await mammoth.convertToHtml({ arrayBuffer });
     return normalizeTemplateHTML(result.value || "").trim();
+  }, []);
+
+  const analyzeTemplateHTML = useCallback((html: string) => {
+    if (!html) return { headings: [], tableCount: 0, labeledFields: [] };
+    const parser = new DOMParser();
+    const doc = parser.parseFromString(html, "text/html");
+    const headings = Array.from(doc.querySelectorAll("h1,h2,h3,h4,h5,h6"))
+      .map((el) => el.textContent?.trim())
+      .filter(Boolean) as string[];
+    const tableCount = doc.querySelectorAll("table").length;
+    const labeledFields = Array.from(doc.querySelectorAll("p,li,td"))
+      .map((el) => el.textContent?.trim() || "")
+      .filter((text) => /[:：]$/.test(text) || /(작성|입력|성명|학번|날짜)/.test(text))
+      .slice(0, 16);
+    return { headings, tableCount, labeledFields };
+  }, []);
+
+  const applyLabelMappingToHtml = useCallback((html: string, mappings: LabelMapping[]) => {
+    if (!html || !mappings.length) return html;
+    const parser = new DOMParser();
+    const doc = parser.parseFromString(html, "text/html");
+    const labelMap = new Map(
+      mappings
+        .map((m) => ({
+          label: m.label?.trim(),
+          value: m.value?.trim(),
+        }))
+        .filter((m) => m.label && m.value) as { label: string; value: string }[]
+    );
+    if (!labelMap.size) return html;
+
+    const textNodes: Text[] = [];
+    const walker = doc.createTreeWalker(doc.body, NodeFilter.SHOW_TEXT);
+    while (walker.nextNode()) {
+      const node = walker.currentNode as Text;
+      if (node.nodeValue?.trim()) textNodes.push(node);
+    }
+
+    textNodes.forEach((node) => {
+      const raw = node.nodeValue || "";
+      const trimmed = raw.trim();
+      if (!trimmed) return;
+      const normalized = trimmed.replace(/\s+/g, " ");
+      for (const [label, value] of labelMap.entries()) {
+        const normalizedLabel = label.replace(/\s+/g, " ");
+        if (normalized === normalizedLabel) {
+          const span = doc.createElement("span");
+          span.textContent = ` ${value}`;
+          span.style.fontWeight = "600";
+          span.style.color = "#0f172a";
+          node.parentNode?.insertBefore(span, node.nextSibling);
+          labelMap.delete(label);
+          break;
+        }
+      }
+    });
+
+    return normalizeTemplateHTML(doc.body.innerHTML || "").trim();
   }, []);
 
   const extractPdfText = useCallback(async (file: File) => {
@@ -152,6 +247,18 @@ if (pdfjs.GlobalWorkerOptions) {
     return fenceMatch ? fenceMatch[1].trim() : trimmed;
   };
 
+  const stripJsonFence = (value: string) => {
+    const trimmed = value.trim();
+    const fenceMatch = trimmed.match(/^```(?:json)?\s*([\s\S]*?)\s*```$/i);
+    return fenceMatch ? fenceMatch[1].trim() : trimmed;
+  };
+
+  const [templateAnalysis, setTemplateAnalysis] = useState<{
+    headings: string[];
+    tableCount: number;
+    labeledFields: string[];
+  }>({ headings: [], tableCount: 0, labeledFields: [] });
+
   const applyAiToTemplate = useCallback(
     async (sourceText: string, userRequest?: string) => {
       if (!sourceText) {
@@ -171,10 +278,17 @@ if (pdfjs.GlobalWorkerOptions) {
           "다음은 현재 편집 템플릿 HTML입니다:",
           docHTML || "(빈 템플릿)",
           "",
+          templateAnalysis.headings.length
+            ? `템플릿 구성 요소: 제목(${templateAnalysis.headings.join(" / ")}), 표 ${templateAnalysis.tableCount}개, 필드 후보(${templateAnalysis.labeledFields.join(
+                ", "
+              )})`
+            : "템플릿 구성 요소: 분석 결과 없음",
+          "",
           userRequest ? `사용자 요청: ${userRequest}` : null,
           "",
-          "자료 내용을 반영해 템플릿 HTML을 완성하세요.",
-          "반환은 완성된 HTML만, 다른 설명은 포함하지 마세요.",
+          "필드 후보와 텍스트를 참고해 각 필드에 들어갈 값만 JSON 배열로 작성하세요.",
+          '형식: [{"label":"필드명","value":"채울값"}]',
+          "반환은 JSON만, 다른 설명은 포함하지 마세요.",
         ]
           .filter(Boolean)
           .join("\n");
@@ -187,12 +301,32 @@ if (pdfjs.GlobalWorkerOptions) {
         if (!res.ok) throw new Error("AI 응답 실패");
 
         const data = await res.json();
-        const html = stripCodeFence(String(data.result || ""));
-        if (!html) throw new Error("AI 결과가 비어있습니다.");
+        const raw = String(data.result || "");
+        let nextHtml = docHTML;
+        let applied = false;
+        try {
+          const jsonText = stripJsonFence(raw);
+          const parsed = JSON.parse(jsonText) as LabelMapping[];
+          if (Array.isArray(parsed) && parsed.length) {
+            nextHtml = applyLabelMappingToHtml(docHTML, parsed);
+            applied = true;
+          }
+        } catch (jsonErr) {
+          console.warn("라벨 매핑 JSON 파싱 실패", jsonErr);
+        }
 
-        setDocHTML(html);
-        sendHtmlToIframe(html);
-        setMessages((prev) => [...prev, { role: "ai", text: "템플릿 자동 채움 완료." }]);
+        if (!applied) {
+          const html = stripCodeFence(raw);
+          if (!html) throw new Error("AI 결과가 비어있습니다.");
+          nextHtml = html;
+        }
+
+        setDocHTML(nextHtml);
+        sendHtmlToIframe(nextHtml);
+        setMessages((prev) => [
+          ...prev,
+          { role: "ai", text: applied ? "필드 매핑 기반 자동 채움 완료." : "템플릿 자동 채움 완료." },
+        ]);
       } catch (err) {
         console.error(err);
         setLoadError("AI 템플릿 채움 실패. 콘솔(F12) 확인.");
@@ -202,7 +336,7 @@ if (pdfjs.GlobalWorkerOptions) {
         setLoadingMessage(null);
       }
     },
-    [docHTML, sendHtmlToIframe, type]
+    [applyLabelMappingToHtml, docHTML, sendHtmlToIframe, templateAnalysis, type]
   );
 
   useEffect(() => {
@@ -233,27 +367,40 @@ if (pdfjs.GlobalWorkerOptions) {
       try {
         let buf: ArrayBuffer;
 
+        let nextOriginalUrl = "";
         if (activeTemplateId) {
           const rec = await getTemplateFromIDB(activeTemplateId);
           if (!rec?.buffer) throw new Error("IDB에서 DOCX 템플릿을 찾지 못했습니다.");
           buf = rec.buffer;
+          nextOriginalUrl = rec.publicUrl || "";
         } else {
           const fileName = TYPE_TO_DEFAULT_DOCX[type] || "report";
           const res = await fetch(`/templates/${fileName}.docx`, { cache: "no-store" });
           if (!res.ok) throw new Error(`기본 템플릿 로드 실패: /templates/${fileName}.docx (HTTP ${res.status})`);
           buf = await res.arrayBuffer();
+          if (typeof window !== "undefined") {
+            nextOriginalUrl = new URL(`/templates/${fileName}.docx`, window.location.href).toString();
+          }
         }
 
         const html = await loadDocxArrayBufferToHtml(buf);
         if (!html) throw new Error("DOCX 변환 결과가 비어있습니다.");
 
+        const analysis = analyzeTemplateHTML(html);
         setDocHTML(html);
+        setTemplateAnalysis(analysis);
         sendHtmlToIframe(html);
+        setOriginalDocxUrl(nextOriginalUrl);
         setLoadingMessage(null);
 
         setMessages((prev) => [
           ...prev,
-          { role: "ai", text: `템플릿 적용 완료. (templateId=${activeTemplateId ? "있음" : "없음"})` },
+          {
+            role: "ai",
+            text: `템플릿 적용 완료. (templateId=${
+              activeTemplateId ? "있음" : "없음"
+            }) 요소: 제목 ${analysis.headings.length}개, 표 ${analysis.tableCount}개`,
+          },
         ]);
       } catch (e) {
         console.error(e);
@@ -275,7 +422,15 @@ if (pdfjs.GlobalWorkerOptions) {
     };
 
     run();
-  }, [frameReady, type, activeTemplateId, loadDocxArrayBufferToHtml, sendHtmlToIframe, docHTML]);
+  }, [
+    frameReady,
+    type,
+    activeTemplateId,
+    loadDocxArrayBufferToHtml,
+    analyzeTemplateHTML,
+    sendHtmlToIframe,
+    docHTML,
+  ]);
 
   const onUploadDocxTemplateHere = useCallback(
     async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -293,15 +448,25 @@ if (pdfjs.GlobalWorkerOptions) {
         const html = await loadDocxArrayBufferToHtml(buf);
         if (!html) throw new Error("DOCX 변환 결과가 비어있습니다.");
 
+        const analysis = analyzeTemplateHTML(html);
         setDocHTML(html);
+        setTemplateAnalysis(analysis);
         sendHtmlToIframe(html);
 
-        const newId = await saveTemplateToIDB(file.name, buf);
+        let publicUrl = "";
+        try {
+          publicUrl = await uploadTemplateToStorage(file);
+        } catch (uploadErr) {
+          console.warn("템플릿 업로드 실패. 원본 미리보기 제한됨", uploadErr);
+        }
+
+        const newId = await saveTemplateToIDB(file.name, buf, publicUrl || undefined);
         setActiveTemplateId(newId);
         loadedKeyRef.current = `${type}::${newId}`;
         router.replace(
           `/project/new/result?type=${encodeURIComponent(type)}&templateId=${encodeURIComponent(newId)}`
         );
+        setOriginalDocxUrl(publicUrl);
       } catch (err) {
         console.error(err);
         setLoadError("DOCX 업로드/저장 실패. 콘솔(F12) 확인.");
@@ -312,7 +477,14 @@ if (pdfjs.GlobalWorkerOptions) {
         setLoadingMessage(null);
       }
     },
-    [loadDocxArrayBufferToHtml, router, sendHtmlToIframe, type]
+    [
+      loadDocxArrayBufferToHtml,
+      analyzeTemplateHTML,
+      router,
+      sendHtmlToIframe,
+      type,
+      uploadTemplateToStorage,
+    ]
   );
 
   // PDF 업로드는 네 기존 자동채움 로직을 여기 붙이면 됩니다.
@@ -355,6 +527,10 @@ if (pdfjs.GlobalWorkerOptions) {
   );
 
   const iframeSrcDoc = useMemo(() => IFRAME_SRC_DOC, []);
+  const viewerSrc = useMemo(
+    () => (originalDocxUrl ? getOfficeViewerUrl(originalDocxUrl) : ""),
+    [getOfficeViewerUrl, originalDocxUrl]
+  );
 
   return (
     <div className={styles.page}>
@@ -409,7 +585,11 @@ if (pdfjs.GlobalWorkerOptions) {
 
       <main className={styles.main}>
         <div className={styles.editorWrapper}>
-          <iframe ref={iframeRef} srcDoc={iframeSrcDoc} className={styles.editorFrame} />
+          {viewerSrc ? (
+            <iframe title="원본 미리보기" src={viewerSrc} className={styles.editorFrame} />
+          ) : (
+            <iframe ref={iframeRef} srcDoc={iframeSrcDoc} className={styles.editorFrame} />
+          )}
           {(isLoading || loadError) && (
             <div className={styles.overlay}>
               <div className={styles.overlayContent}>
