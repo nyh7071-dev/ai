@@ -9,7 +9,6 @@ import styles from "./result.module.css";
 type TemplateType = "레포트" | "실험보고서" | "논문" | "강의노트" | "문헌고찰";
 type ChatMsg = { role: "ai" | "user"; text: string };
 type LabelMapping = { label: string; value: string };
-type ViewMode = "original" | "edit";
 
 const TYPE_TO_DEFAULT_DOCX: Record<TemplateType, string> = {
   레포트: "report",
@@ -114,33 +113,18 @@ function WorkspaceImpl() {
   }, []);
 
   const uploadTemplateToStorage = useCallback(async (file: File) => {
-    const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
-    const supabaseKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
-    if (supabaseUrl && supabaseKey) {
-      const bucket = process.env.NEXT_PUBLIC_TEMPLATE_BUCKET || "docx-templates";
-      const { supabase } = await import("@/lib/supabase");
-      if (!supabase?.storage) throw new Error("Supabase storage client가 없습니다.");
-      const safeName = file.name.replace(/\s+/g, "_");
-      const path = `templates/${Date.now()}_${safeName}`;
-      const { error } = await supabase.storage.from(bucket).upload(path, file, {
-        cacheControl: "3600",
-        upsert: false,
-      });
-      if (error) throw error;
-      const { data } = supabase.storage.from(bucket).getPublicUrl(path);
-      if (!data?.publicUrl) throw new Error("공개 URL 생성 실패");
-      return data.publicUrl;
-    }
-
-    const formData = new FormData();
-    formData.append("file", file);
-    const res = await fetch("/api/templates/upload", {
-      method: "POST",
-      body: formData,
+    const bucket = process.env.NEXT_PUBLIC_TEMPLATE_BUCKET || "docx-templates";
+    const { supabase } = await import("@/lib/supabase");
+    if (!supabase?.storage) throw new Error("Supabase storage client가 없습니다.");
+    const safeName = file.name.replace(/\s+/g, "_");
+    const path = `templates/${Date.now()}_${safeName}`;
+    const { error } = await supabase.storage.from(bucket).upload(path, file, {
+      cacheControl: "3600",
+      upsert: false,
     });
-    if (!res.ok) throw new Error("로컬 업로드 실패");
-    const data = (await res.json()) as { publicUrl?: string };
-    if (!data.publicUrl) throw new Error("로컬 공개 URL 생성 실패");
+    if (error) throw error;
+    const { data } = supabase.storage.from(bucket).getPublicUrl(path);
+    if (!data?.publicUrl) throw new Error("공개 URL 생성 실패");
     return data.publicUrl;
   }, []);
 
@@ -481,14 +465,7 @@ if (pdfjs.GlobalWorkerOptions) {
         setLoadingMessage(null);
       }
     },
-    [
-      loadDocxArrayBufferToHtml,
-      analyzeTemplateHTML,
-      router,
-      sendHtmlToIframe,
-      type,
-      uploadTemplateToStorage,
-    ]
+    [loadDocxArrayBufferToHtml, analyzeTemplateHTML, router, sendHtmlToIframe, type]
   );
 
   // PDF 업로드는 네 기존 자동채움 로직을 여기 붙이면 됩니다.
