@@ -18,44 +18,6 @@ const TYPE_TO_DEFAULT_DOCX: Record<TemplateType, string> = {
   문헌고찰: "review",
 };
 
-const IFRAME_SRC_DOC = [
-  "<!DOCTYPE html>",
-  "<html>",
-  "<head>",
-  '  <meta charset="utf-8"/>',
-  "  <style>",
-  "    body { margin:0; background:#eef2f6; }",
-  "    #page { width: 850px; min-height: 1100px; margin: 24px auto; background: white; box-shadow: 0 10px 30px rgba(0,0,0,0.12); border-radius: 8px; overflow: hidden; }",
-  "    #editor { padding: 80px 90px; font-family: 'Malgun Gothic', sans-serif; line-height: 1.8; font-size: 15px; color:#111; outline: none; min-height: 1100px; }",
-  "  </style>",
-  "</head>",
-  "<body>",
-  '  <div id="page">',
-  '    <div id="editor" contenteditable="true" spellcheck="false">양식을 불러오는 중...</div>',
-  "  </div>",
-  "",
-  "  <script>",
-  "    const editor = document.getElementById('editor');",
-  "    window.parent.postMessage({ __editor:true, type:'FRAME_READY' }, '*');",
-  "",
-  "    let t = null;",
-  "    editor.addEventListener('input', () => {",
-  "      clearTimeout(t);",
-  "      t = setTimeout(() => {",
-  "        window.parent.postMessage({ __editor:true, type:'EDIT_HTML', html: editor.innerHTML }, '*');",
-  "      }, 250);",
-  "    });",
-  "",
-  "    window.addEventListener('message', (ev) => {",
-  "      const d = ev.data;",
-  "      if (!d || !d.__editor) return;",
-  "      if (d.type === 'SET_HTML') editor.innerHTML = d.html || \"\";",
-  "    });",
-  "  </script>",
-  "</body>",
-  "</html>",
-].join("\n");
-
 const Workspace = dynamic(() => Promise.resolve(WorkspaceImpl), { ssr: false });
 
 export default function ResultPage() {
@@ -76,9 +38,9 @@ function WorkspaceImpl() {
   const [activeTemplateId, setActiveTemplateId] = useState(templateIdFromUrl);
   useEffect(() => setActiveTemplateId(templateIdFromUrl), [templateIdFromUrl]);
 
-  const iframeRef = useRef<HTMLIFrameElement>(null);
-
-  const [frameReady, setFrameReady] = useState(false);
+  const previewRef = useRef<HTMLDivElement>(null);
+  const pendingBufferRef = useRef<ArrayBuffer | null>(null);
+  const [previewReady, setPreviewReady] = useState(false);
   const [docHTML, setDocHTML] = useState<string>("");
   const [loadError, setLoadError] = useState<string | null>(null);
   const [loadingMessage, setLoadingMessage] = useState<string | null>(null);
@@ -93,10 +55,9 @@ function WorkspaceImpl() {
 
   const loadedKeyRef = useRef<string>("");
 
-  const sendHtmlToIframe = useCallback((html: string) => {
-    const w = iframeRef.current?.contentWindow;
-    if (!w) return;
-    w.postMessage({ __editor: true, type: "SET_HTML", html }, "*");
+  const applyHtmlToPreview = useCallback((html: string) => {
+    if (!previewRef.current) return;
+    previewRef.current.innerHTML = html || "";
   }, []);
 
   const normalizeTemplateHTML = (html: string) => {
@@ -326,21 +287,17 @@ if (pdfjs.GlobalWorkerOptions) {
   );
 
   useEffect(() => {
-    const onMessage = (ev: MessageEvent) => {
-      if (ev.source !== iframeRef.current?.contentWindow) return;
-      if (!ev.data?.__editor) return;
-
-      if (ev.data.type === "FRAME_READY") setFrameReady(true);
-      if (ev.data.type === "EDIT_HTML") setDocHTML(String(ev.data.html || ""));
-    };
-
-    window.addEventListener("message", onMessage);
-    return () => window.removeEventListener("message", onMessage);
+    setPreviewReady(true);
   }, []);
 
   useEffect(() => {
-    if (!frameReady) return;
+    if (!previewReady || !pendingBufferRef.current) return;
+    const buffer = pendingBufferRef.current;
+    pendingBufferRef.current = null;
+    renderDocxPreview(buffer);
+  }, [previewReady, renderDocxPreview]);
 
+  useEffect(() => {
     const key = `${type}::${activeTemplateId || "DEFAULT"}`;
     if (loadedKeyRef.current === key) return;
     loadedKeyRef.current = key;
@@ -369,8 +326,9 @@ if (pdfjs.GlobalWorkerOptions) {
           }
         }
 
-        const html = await loadDocxArrayBufferToHtml(buf);
-        if (!html) throw new Error("DOCX 변환 결과가 비어있습니다.");
+        await renderDocxPreview(buf);
+        const html = normalizeTemplateHTML(previewRef.current?.innerHTML || "").trim();
+        if (!html) throw new Error("DOCX 렌더링 결과가 비어있습니다.");
 
         const analysis = analyzeTemplateHTML(html);
         setDocHTML(html);
@@ -400,7 +358,7 @@ if (pdfjs.GlobalWorkerOptions) {
               - 콘솔(F12) 에러를 확인하세요.
             </div>`;
           setDocHTML(errHtml);
-          sendHtmlToIframe(errHtml);
+          applyHtmlToPreview(errHtml);
         }
         setMessages((prev) => [...prev, { role: "ai", text: "템플릿 적용 실패. 콘솔(F12) 확인." }]);
       } finally {
@@ -432,8 +390,9 @@ if (pdfjs.GlobalWorkerOptions) {
 
       try {
         const buf = await file.arrayBuffer();
-        const html = await loadDocxArrayBufferToHtml(buf);
-        if (!html) throw new Error("DOCX 변환 결과가 비어있습니다.");
+        await renderDocxPreview(buf);
+        const html = normalizeTemplateHTML(previewRef.current?.innerHTML || "").trim();
+        if (!html) throw new Error("DOCX 렌더링 결과가 비어있습니다.");
 
         const analysis = analyzeTemplateHTML(html);
         setDocHTML(html);
