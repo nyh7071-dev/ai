@@ -119,6 +119,8 @@ function WorkspaceImpl() {
   }, []);
 
   const onlyOfficeUrl = process.env.NEXT_PUBLIC_ONLYOFFICE_URL || "";
+  const filePublicBaseUrl = process.env.NEXT_PUBLIC_FILE_BASE_URL || "";
+  const onlyOfficeCallbackBaseUrl = process.env.NEXT_PUBLIC_ONLYOFFICE_CALLBACK_BASE_URL || "";
 
   const getOfficeViewerUrl = useCallback((url: string) => {
     return `https://view.officeapps.live.com/op/embed.aspx?src=${encodeURIComponent(url)}`;
@@ -139,8 +141,9 @@ function WorkspaceImpl() {
       const safeUrl = encodeURI(fileUrl);
       const fileName = getOnlyOfficeFileName(fileUrl);
       const origin = typeof window !== "undefined" ? window.location.origin : "";
+      const callbackBase = onlyOfficeCallbackBaseUrl || origin;
       const callbackUrl = fileName
-        ? `${origin}/api/onlyoffice/callback?file=${encodeURIComponent(fileName)}`
+        ? `${callbackBase}/api/onlyoffice/callback?file=${encodeURIComponent(fileName)}`
         : "";
       const docKey = `${fileName || "doc"}_${Date.now()}_${Math.random().toString(36).slice(2)}`;
       return [
@@ -177,7 +180,7 @@ function WorkspaceImpl() {
         "</html>",
       ].join(\"\\n\");
     },
-    [getOnlyOfficeFileName, onlyOfficeUrl]
+    [getOnlyOfficeFileName, onlyOfficeCallbackBaseUrl, onlyOfficeUrl]
   );
 
   const uploadTemplateToStorage = useCallback(async (file: File) => {
@@ -448,7 +451,8 @@ if (pdfjs.GlobalWorkerOptions) {
           if (!res.ok) throw new Error(`기본 템플릿 로드 실패: /templates/${fileName}.docx (HTTP ${res.status})`);
           buf = await res.arrayBuffer();
           if (typeof window !== "undefined") {
-            nextOriginalUrl = new URL(`/templates/${fileName}.docx`, window.location.href).toString();
+            const base = filePublicBaseUrl || window.location.origin;
+            nextOriginalUrl = new URL(`/templates/${fileName}.docx`, base).toString();
           }
         }
 
