@@ -88,6 +88,8 @@ function WorkspaceImpl() {
   const [isLoading, setIsLoading] = useState(false);
   const [chatInput, setChatInput] = useState("");
   const [sourceText, setSourceText] = useState("");
+  const [viewMode, setViewMode] = useState<ViewMode>("original");
+  const [originalDocxUrl, setOriginalDocxUrl] = useState<string>("");
 
   const loadedKeyRef = useRef<string>("");
 
@@ -105,6 +107,26 @@ function WorkspaceImpl() {
     s = s.replace(/\u0000/g, "");
     return s;
   };
+
+  const getOfficeViewerUrl = useCallback((url: string) => {
+    return `https://view.officeapps.live.com/op/embed.aspx?src=${encodeURIComponent(url)}`;
+  }, []);
+
+  const uploadTemplateToStorage = useCallback(async (file: File) => {
+    const bucket = process.env.NEXT_PUBLIC_TEMPLATE_BUCKET || "docx-templates";
+    const { supabase } = await import("@/lib/supabase");
+    if (!supabase?.storage) throw new Error("Supabase storage client가 없습니다.");
+    const safeName = file.name.replace(/\s+/g, "_");
+    const path = `templates/${Date.now()}_${safeName}`;
+    const { error } = await supabase.storage.from(bucket).upload(path, file, {
+      cacheControl: "3600",
+      upsert: false,
+    });
+    if (error) throw error;
+    const { data } = supabase.storage.from(bucket).getPublicUrl(path);
+    if (!data?.publicUrl) throw new Error("공개 URL 생성 실패");
+    return data.publicUrl;
+  }, []);
 
   const loadDocxArrayBufferToHtml = useCallback(async (arrayBuffer: ArrayBuffer) => {
     // mammoth는 동적 import가 안전합니다.
@@ -331,15 +353,20 @@ if (pdfjs.GlobalWorkerOptions) {
       try {
         let buf: ArrayBuffer;
 
+        let nextOriginalUrl = "";
         if (activeTemplateId) {
           const rec = await getTemplateFromIDB(activeTemplateId);
           if (!rec?.buffer) throw new Error("IDB에서 DOCX 템플릿을 찾지 못했습니다.");
           buf = rec.buffer;
+          nextOriginalUrl = rec.publicUrl || "";
         } else {
           const fileName = TYPE_TO_DEFAULT_DOCX[type] || "report";
           const res = await fetch(`/templates/${fileName}.docx`, { cache: "no-store" });
           if (!res.ok) throw new Error(`기본 템플릿 로드 실패: /templates/${fileName}.docx (HTTP ${res.status})`);
           buf = await res.arrayBuffer();
+          if (typeof window !== "undefined") {
+            nextOriginalUrl = new URL(`/templates/${fileName}.docx`, window.location.href).toString();
+          }
         }
 
         const html = await loadDocxArrayBufferToHtml(buf);
@@ -349,6 +376,8 @@ if (pdfjs.GlobalWorkerOptions) {
         setDocHTML(html);
         setTemplateAnalysis(analysis);
         sendHtmlToIframe(html);
+        setOriginalDocxUrl(nextOriginalUrl);
+        setViewMode(nextOriginalUrl ? "original" : "edit");
         setLoadingMessage(null);
 
         setMessages((prev) => [
@@ -411,12 +440,21 @@ if (pdfjs.GlobalWorkerOptions) {
         setTemplateAnalysis(analysis);
         sendHtmlToIframe(html);
 
-        const newId = await saveTemplateToIDB(file.name, buf);
+        let publicUrl = "";
+        try {
+          publicUrl = await uploadTemplateToStorage(file);
+        } catch (uploadErr) {
+          console.warn("템플릿 업로드 실패. 원본 미리보기 제한됨", uploadErr);
+        }
+
+        const newId = await saveTemplateToIDB(file.name, buf, publicUrl || undefined);
         setActiveTemplateId(newId);
         loadedKeyRef.current = `${type}::${newId}`;
         router.replace(
           `/project/new/result?type=${encodeURIComponent(type)}&templateId=${encodeURIComponent(newId)}`
         );
+        setOriginalDocxUrl(publicUrl);
+        setViewMode(publicUrl ? "original" : "edit");
       } catch (err) {
         console.error(err);
         setLoadError("DOCX 업로드/저장 실패. 콘솔(F12) 확인.");
@@ -470,6 +508,10 @@ if (pdfjs.GlobalWorkerOptions) {
   );
 
   const iframeSrcDoc = useMemo(() => IFRAME_SRC_DOC, []);
+  const viewerSrc = useMemo(
+    () => (originalDocxUrl ? getOfficeViewerUrl(originalDocxUrl) : ""),
+    [getOfficeViewerUrl, originalDocxUrl]
+  );
 
   return (
     <div className={styles.page}>
@@ -493,6 +535,29 @@ if (pdfjs.GlobalWorkerOptions) {
           </div>
 
           {isLoading && <div className={styles.loadingNote}>{loadingMessage || "처리 중..."}</div>}
+        </div>
+
+        <div className={styles.uploadSection}>
+          <div className={styles.uploadButtons}>
+            <button
+              type="button"
+              className={styles.docxUpload}
+              onClick={() => setViewMode("original")}
+              disabled={!viewerSrc}
+            >
+              원본 보기
+            </button>
+            <button
+              type="button"
+              className={styles.pdfUpload}
+              onClick={() => setViewMode("edit")}
+            >
+              편집 보기
+            </button>
+          </div>
+          {!viewerSrc && (
+            <div className={styles.loadingNote}>원본 미리보기는 공개 URL이 필요합니다.</div>
+          )}
         </div>
 
         <div className={styles.messageList}>
@@ -524,7 +589,11 @@ if (pdfjs.GlobalWorkerOptions) {
 
       <main className={styles.main}>
         <div className={styles.editorWrapper}>
-          <iframe ref={iframeRef} srcDoc={iframeSrcDoc} className={styles.editorFrame} />
+          {viewMode === "original" && viewerSrc ? (
+            <iframe title="원본 미리보기" src={viewerSrc} className={styles.editorFrame} />
+          ) : (
+            <iframe ref={iframeRef} srcDoc={iframeSrcDoc} className={styles.editorFrame} />
+          )}
           {(isLoading || loadError) && (
             <div className={styles.overlay}>
               <div className={styles.overlayContent}>
