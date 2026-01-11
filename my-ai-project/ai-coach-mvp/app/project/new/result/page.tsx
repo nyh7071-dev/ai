@@ -59,6 +59,7 @@ function WorkspaceImpl() {
     if (!previewRef.current) return;
     previewRef.current.innerHTML = html || "";
   }, []);
+  const sendHtmlToIframe = applyHtmlToPreview;
 
   const normalizeTemplateHTML = (html: string) => {
     let s = (html || "")
