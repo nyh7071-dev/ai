@@ -30,6 +30,8 @@ export async function POST(request: Request) {
     request.headers.get("origin") ||
     "";
   const publicUrl = baseUrl ? `${baseUrl}/uploads/${fileName}` : `/uploads/${fileName}`;
+  const origin = request.headers.get("origin") || "";
+  const publicUrl = origin ? `${origin}/uploads/${fileName}` : `/uploads/${fileName}`;
 
   return new Response(JSON.stringify({ publicUrl }), {
     status: 200,
