@@ -1,6 +1,6 @@
 "use client";
 
-import { Suspense, useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { Suspense, useCallback, useEffect, useRef, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import dynamic from "next/dynamic";
 import { getTemplateFromIDB, saveTemplateToIDB } from "@/lib/templateStore";
@@ -8,6 +8,7 @@ import styles from "./result.module.css";
 
 type TemplateType = "레포트" | "실험보고서" | "논문" | "강의노트" | "문헌고찰";
 type ChatMsg = { role: "ai" | "user"; text: string };
+type LabelMapping = { label: string; value: string };
 
 const TYPE_TO_DEFAULT_DOCX: Record<TemplateType, string> = {
   레포트: "report",
@@ -16,44 +17,6 @@ const TYPE_TO_DEFAULT_DOCX: Record<TemplateType, string> = {
   강의노트: "lecture_note",
   문헌고찰: "review",
 };
-
-const IFRAME_SRC_DOC = [
-  "<!DOCTYPE html>",
-  "<html>",
-  "<head>",
-  '  <meta charset="utf-8"/>',
-  "  <style>",
-  "    body { margin:0; background:#eef2f6; }",
-  "    #page { width: 850px; min-height: 1100px; margin: 24px auto; background: white; box-shadow: 0 10px 30px rgba(0,0,0,0.12); border-radius: 8px; overflow: hidden; }",
-  "    #editor { padding: 80px 90px; font-family: 'Malgun Gothic', sans-serif; line-height: 1.8; font-size: 15px; color:#111; outline: none; min-height: 1100px; }",
-  "  </style>",
-  "</head>",
-  "<body>",
-  '  <div id="page">',
-  '    <div id="editor" contenteditable="true" spellcheck="false">양식을 불러오는 중...</div>',
-  "  </div>",
-  "",
-  "  <script>",
-  "    const editor = document.getElementById('editor');",
-  "    window.parent.postMessage({ __editor:true, type:'FRAME_READY' }, '*');",
-  "",
-  "    let t = null;",
-  "    editor.addEventListener('input', () => {",
-  "      clearTimeout(t);",
-  "      t = setTimeout(() => {",
-  "        window.parent.postMessage({ __editor:true, type:'EDIT_HTML', html: editor.innerHTML }, '*');",
-  "      }, 250);",
-  "    });",
-  "",
-  "    window.addEventListener('message', (ev) => {",
-  "      const d = ev.data;",
-  "      if (!d || !d.__editor) return;",
-  "      if (d.type === 'SET_HTML') editor.innerHTML = d.html || \"\";",
-  "    });",
-  "  </script>",
-  "</body>",
-  "</html>",
-].join("\n");
 
 const Workspace = dynamic(() => Promise.resolve(WorkspaceImpl), { ssr: false });
 
@@ -75,9 +38,14 @@ function WorkspaceImpl() {
   const [activeTemplateId, setActiveTemplateId] = useState(templateIdFromUrl);
   useEffect(() => setActiveTemplateId(templateIdFromUrl), [templateIdFromUrl]);
 
-  const iframeRef = useRef<HTMLIFrameElement>(null);
-
-  const [frameReady, setFrameReady] = useState(false);
+  const previewRef = useRef<HTMLDivElement>(null);
+  const pendingBufferRef = useRef<ArrayBuffer | null>(null);
+  const renderDocxPreviewRef = useRef<(arrayBuffer: ArrayBuffer) => Promise<void>>(async () => {});
+  const renderDocxPreview = useCallback(
+    async (arrayBuffer: ArrayBuffer) => renderDocxPreviewRef.current(arrayBuffer),
+    []
+  );
+  const [previewReady, setPreviewReady] = useState(false);
   const [docHTML, setDocHTML] = useState<string>("");
   const [loadError, setLoadError] = useState<string | null>(null);
   const [loadingMessage, setLoadingMessage] = useState<string | null>(null);
@@ -87,14 +55,13 @@ function WorkspaceImpl() {
   const [isLoading, setIsLoading] = useState(false);
   const [chatInput, setChatInput] = useState("");
   const [sourceText, setSourceText] = useState("");
-
   const loadedKeyRef = useRef<string>("");
 
-  const sendHtmlToIframe = useCallback((html: string) => {
-    const w = iframeRef.current?.contentWindow;
-    if (!w) return;
-    w.postMessage({ __editor: true, type: "SET_HTML", html }, "*");
+  const applyHtmlToPreview = useCallback((html: string) => {
+    if (!previewRef.current) return;
+    previewRef.current.innerHTML = html || "";
   }, []);
+  const sendHtmlToIframe = applyHtmlToPreview;
 
   const normalizeTemplateHTML = (html: string) => {
     let s = (html || "")
@@ -105,11 +72,116 @@ function WorkspaceImpl() {
     return s;
   };
 
-  const loadDocxArrayBufferToHtml = useCallback(async (arrayBuffer: ArrayBuffer) => {
-    // mammoth는 동적 import가 안전합니다.
-    const mammoth = await import("mammoth");
-    const result = await mammoth.convertToHtml({ arrayBuffer });
-    return normalizeTemplateHTML(result.value || "").trim();
+  const uploadTemplateToStorage = useCallback(async (file: File) => {
+    const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
+    const supabaseKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
+    if (supabaseUrl && supabaseKey) {
+      const bucket = process.env.NEXT_PUBLIC_TEMPLATE_BUCKET || "docx-templates";
+      const { supabase } = await import("@/lib/supabase");
+      if (!supabase?.storage) throw new Error("Supabase storage client가 없습니다.");
+      const safeName = file.name.replace(/\s+/g, "_");
+      const path = `templates/${Date.now()}_${safeName}`;
+      const { error } = await supabase.storage.from(bucket).upload(path, file, {
+        cacheControl: "3600",
+        upsert: false,
+      });
+      if (error) throw error;
+      const { data } = supabase.storage.from(bucket).getPublicUrl(path);
+      if (!data?.publicUrl) throw new Error("공개 URL 생성 실패");
+      return data.publicUrl;
+    }
+
+    const formData = new FormData();
+    formData.append("file", file);
+    const res = await fetch("/api/templates/upload", {
+      method: "POST",
+      body: formData,
+    });
+    if (!res.ok) throw new Error("로컬 업로드 실패");
+    const data = (await res.json()) as { publicUrl?: string };
+    if (!data.publicUrl) throw new Error("로컬 공개 URL 생성 실패");
+    return data.publicUrl;
+  }, []);
+
+  const renderDocxPreviewImpl = useCallback(
+    async (arrayBuffer: ArrayBuffer) => {
+      if (!previewRef.current) {
+        pendingBufferRef.current = arrayBuffer;
+        return;
+      }
+      const { renderAsync } = await import("docx-preview");
+      previewRef.current.innerHTML = "";
+      await renderAsync(arrayBuffer, previewRef.current, previewRef.current, {
+        inWrapper: false,
+        ignoreWidth: false,
+        ignoreHeight: false,
+        ignoreFonts: false,
+      });
+      const html = normalizeTemplateHTML(previewRef.current.innerHTML || "").trim();
+      setDocHTML(html);
+    },
+    [normalizeTemplateHTML]
+  );
+  useEffect(() => {
+    renderDocxPreviewRef.current = renderDocxPreviewImpl;
+  }, [renderDocxPreviewImpl]);
+
+  const analyzeTemplateHTML = useCallback((html: string) => {
+    if (!html) return { headings: [], tableCount: 0, labeledFields: [] };
+    const parser = new DOMParser();
+    const doc = parser.parseFromString(html, "text/html");
+    const headings = Array.from(doc.querySelectorAll("h1,h2,h3,h4,h5,h6"))
+      .map((el) => el.textContent?.trim())
+      .filter(Boolean) as string[];
+    const tableCount = doc.querySelectorAll("table").length;
+    const labeledFields = Array.from(doc.querySelectorAll("p,li,td"))
+      .map((el) => el.textContent?.trim() || "")
+      .filter((text) => /[:：]$/.test(text) || /(작성|입력|성명|학번|날짜)/.test(text))
+      .slice(0, 16);
+    return { headings, tableCount, labeledFields };
+  }, []);
+
+  const applyLabelMappingToHtml = useCallback((html: string, mappings: LabelMapping[]) => {
+    if (!html || !mappings.length) return html;
+    const parser = new DOMParser();
+    const doc = parser.parseFromString(html, "text/html");
+    const labelMap = new Map(
+      mappings
+        .map((m) => ({
+          label: m.label?.trim(),
+          value: m.value?.trim(),
+        }))
+        .filter((m) => m.label && m.value) as { label: string; value: string }[]
+    );
+    if (!labelMap.size) return html;
+
+    const textNodes: Text[] = [];
+    const walker = doc.createTreeWalker(doc.body, NodeFilter.SHOW_TEXT);
+    while (walker.nextNode()) {
+      const node = walker.currentNode as Text;
+      if (node.nodeValue?.trim()) textNodes.push(node);
+    }
+
+    textNodes.forEach((node) => {
+      const raw = node.nodeValue || "";
+      const trimmed = raw.trim();
+      if (!trimmed) return;
+      const normalized = trimmed.replace(/\s+/g, " ");
+      for (const [label, value] of labelMap.entries()) {
+        const normalizedLabel = label.replace(/\s+/g, " ");
+        if (normalized === normalizedLabel) {
+          const span = doc.createElement("span");
+          span.textContent = ` ${value}`;
+          span.style.fontWeight = "600";
+          span.style.color = "#0f172a";
+          node.parentNode?.insertBefore(span, node.nextSibling);
+          labelMap.delete(label);
+          break;
+        }
+      }
+    });
+
+    return normalizeTemplateHTML(doc.body.innerHTML || "").trim();
   }, []);
 
   const extractPdfText = useCallback(async (file: File) => {
@@ -152,6 +224,18 @@ if (pdfjs.GlobalWorkerOptions) {
     return fenceMatch ? fenceMatch[1].trim() : trimmed;
   };
 
+  const stripJsonFence = (value: string) => {
+    const trimmed = value.trim();
+    const fenceMatch = trimmed.match(/^```(?:json)?\s*([\s\S]*?)\s*```$/i);
+    return fenceMatch ? fenceMatch[1].trim() : trimmed;
+  };
+
+  const [templateAnalysis, setTemplateAnalysis] = useState<{
+    headings: string[];
+    tableCount: number;
+    labeledFields: string[];
+  }>({ headings: [], tableCount: 0, labeledFields: [] });
+
   const applyAiToTemplate = useCallback(
     async (sourceText: string, userRequest?: string) => {
       if (!sourceText) {
@@ -171,10 +255,17 @@ if (pdfjs.GlobalWorkerOptions) {
           "다음은 현재 편집 템플릿 HTML입니다:",
           docHTML || "(빈 템플릿)",
           "",
+          templateAnalysis.headings.length
+            ? `템플릿 구성 요소: 제목(${templateAnalysis.headings.join(" / ")}), 표 ${templateAnalysis.tableCount}개, 필드 후보(${templateAnalysis.labeledFields.join(
+                ", "
+              )})`
+            : "템플릿 구성 요소: 분석 결과 없음",
+          "",
           userRequest ? `사용자 요청: ${userRequest}` : null,
           "",
-          "자료 내용을 반영해 템플릿 HTML을 완성하세요.",
-          "반환은 완성된 HTML만, 다른 설명은 포함하지 마세요.",
+          "필드 후보와 텍스트를 참고해 각 필드에 들어갈 값만 JSON 배열로 작성하세요.",
+          '형식: [{"label":"필드명","value":"채울값"}]',
+          "반환은 JSON만, 다른 설명은 포함하지 마세요.",
         ]
           .filter(Boolean)
           .join("\n");
@@ -187,12 +278,32 @@ if (pdfjs.GlobalWorkerOptions) {
         if (!res.ok) throw new Error("AI 응답 실패");
 
         const data = await res.json();
-        const html = stripCodeFence(String(data.result || ""));
-        if (!html) throw new Error("AI 결과가 비어있습니다.");
+        const raw = String(data.result || "");
+        let nextHtml = docHTML;
+        let applied = false;
+        try {
+          const jsonText = stripJsonFence(raw);
+          const parsed = JSON.parse(jsonText) as LabelMapping[];
+          if (Array.isArray(parsed) && parsed.length) {
+            nextHtml = applyLabelMappingToHtml(docHTML, parsed);
+            applied = true;
+          }
+        } catch (jsonErr) {
+          console.warn("라벨 매핑 JSON 파싱 실패", jsonErr);
+        }
 
-        setDocHTML(html);
-        sendHtmlToIframe(html);
-        setMessages((prev) => [...prev, { role: "ai", text: "템플릿 자동 채움 완료." }]);
+        if (!applied) {
+          const html = stripCodeFence(raw);
+          if (!html) throw new Error("AI 결과가 비어있습니다.");
+          nextHtml = html;
+        }
+
+        setDocHTML(nextHtml);
+        applyHtmlToPreview(nextHtml);
+        setMessages((prev) => [
+          ...prev,
+          { role: "ai", text: applied ? "필드 매핑 기반 자동 채움 완료." : "템플릿 자동 채움 완료." },
+        ]);
       } catch (err) {
         console.error(err);
         setLoadError("AI 템플릿 채움 실패. 콘솔(F12) 확인.");
@@ -202,25 +313,21 @@ if (pdfjs.GlobalWorkerOptions) {
         setLoadingMessage(null);
       }
     },
-    [docHTML, sendHtmlToIframe, type]
+    [applyHtmlToPreview, applyLabelMappingToHtml, docHTML, templateAnalysis, type]
   );
 
   useEffect(() => {
-    const onMessage = (ev: MessageEvent) => {
-      if (ev.source !== iframeRef.current?.contentWindow) return;
-      if (!ev.data?.__editor) return;
-
-      if (ev.data.type === "FRAME_READY") setFrameReady(true);
-      if (ev.data.type === "EDIT_HTML") setDocHTML(String(ev.data.html || ""));
-    };
-
-    window.addEventListener("message", onMessage);
-    return () => window.removeEventListener("message", onMessage);
+    setPreviewReady(true);
   }, []);
 
   useEffect(() => {
-    if (!frameReady) return;
+    if (!previewReady || !pendingBufferRef.current) return;
+    const buffer = pendingBufferRef.current;
+    pendingBufferRef.current = null;
+    renderDocxPreview(buffer);
+  }, [previewReady, renderDocxPreview]);
 
+  useEffect(() => {
     const key = `${type}::${activeTemplateId || "DEFAULT"}`;
     if (loadedKeyRef.current === key) return;
     loadedKeyRef.current = key;
@@ -244,16 +351,24 @@ if (pdfjs.GlobalWorkerOptions) {
           buf = await res.arrayBuffer();
         }
 
-        const html = await loadDocxArrayBufferToHtml(buf);
-        if (!html) throw new Error("DOCX 변환 결과가 비어있습니다.");
+        await renderDocxPreview(buf);
+        const html = normalizeTemplateHTML(previewRef.current?.innerHTML || "").trim();
+        if (!html) throw new Error("DOCX 렌더링 결과가 비어있습니다.");
 
+        const analysis = analyzeTemplateHTML(html);
         setDocHTML(html);
-        sendHtmlToIframe(html);
+        setTemplateAnalysis(analysis);
+        applyHtmlToPreview(html);
         setLoadingMessage(null);
 
         setMessages((prev) => [
           ...prev,
-          { role: "ai", text: `템플릿 적용 완료. (templateId=${activeTemplateId ? "있음" : "없음"})` },
+          {
+            role: "ai",
+            text: `템플릿 적용 완료. (templateId=${
+              activeTemplateId ? "있음" : "없음"
+            }) 요소: 제목 ${analysis.headings.length}개, 표 ${analysis.tableCount}개`,
+          },
         ]);
       } catch (e) {
         console.error(e);
@@ -266,7 +381,7 @@ if (pdfjs.GlobalWorkerOptions) {
               - 콘솔(F12) 에러를 확인하세요.
             </div>`;
           setDocHTML(errHtml);
-          sendHtmlToIframe(errHtml);
+          applyHtmlToPreview(errHtml);
         }
         setMessages((prev) => [...prev, { role: "ai", text: "템플릿 적용 실패. 콘솔(F12) 확인." }]);
       } finally {
@@ -275,7 +390,15 @@ if (pdfjs.GlobalWorkerOptions) {
     };
 
     run();
-  }, [frameReady, type, activeTemplateId, loadDocxArrayBufferToHtml, sendHtmlToIframe, docHTML]);
+  }, [
+    type,
+    activeTemplateId,
+    analyzeTemplateHTML,
+    applyHtmlToPreview,
+    docHTML,
+    normalizeTemplateHTML,
+    renderDocxPreview,
+  ]);
 
   const onUploadDocxTemplateHere = useCallback(
     async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -290,13 +413,23 @@ if (pdfjs.GlobalWorkerOptions) {
 
       try {
         const buf = await file.arrayBuffer();
-        const html = await loadDocxArrayBufferToHtml(buf);
-        if (!html) throw new Error("DOCX 변환 결과가 비어있습니다.");
+        await renderDocxPreview(buf);
+        const html = normalizeTemplateHTML(previewRef.current?.innerHTML || "").trim();
+        if (!html) throw new Error("DOCX 렌더링 결과가 비어있습니다.");
 
+        const analysis = analyzeTemplateHTML(html);
         setDocHTML(html);
-        sendHtmlToIframe(html);
+        setTemplateAnalysis(analysis);
+        applyHtmlToPreview(html);
 
-        const newId = await saveTemplateToIDB(file.name, buf);
+        let publicUrl = "";
+        try {
+          publicUrl = await uploadTemplateToStorage(file);
+        } catch (uploadErr) {
+          console.warn("템플릿 업로드 실패. 원본 미리보기 제한됨", uploadErr);
+        }
+
+        const newId = await saveTemplateToIDB(file.name, buf, publicUrl || undefined);
         setActiveTemplateId(newId);
         loadedKeyRef.current = `${type}::${newId}`;
         router.replace(
@@ -312,7 +445,15 @@ if (pdfjs.GlobalWorkerOptions) {
         setLoadingMessage(null);
       }
     },
-    [loadDocxArrayBufferToHtml, router, sendHtmlToIframe, type]
+    [
+      analyzeTemplateHTML,
+      router,
+      applyHtmlToPreview,
+      type,
+      uploadTemplateToStorage,
+      normalizeTemplateHTML,
+      renderDocxPreview,
+    ]
   );
 
   // PDF 업로드는 네 기존 자동채움 로직을 여기 붙이면 됩니다.
@@ -353,8 +494,6 @@ if (pdfjs.GlobalWorkerOptions) {
     },
     [applyAiToTemplate, chatInput, sourceText]
   );
-
-  const iframeSrcDoc = useMemo(() => IFRAME_SRC_DOC, []);
 
   return (
     <div className={styles.page}>
@@ -409,7 +548,16 @@ if (pdfjs.GlobalWorkerOptions) {
 
       <main className={styles.main}>
         <div className={styles.editorWrapper}>
-          <iframe ref={iframeRef} srcDoc={iframeSrcDoc} className={styles.editorFrame} />
+          <div
+            ref={previewRef}
+            className={styles.editorFrame}
+            contentEditable
+            suppressContentEditableWarning
+            onInput={(e) => {
+              const html = normalizeTemplateHTML((e.currentTarget as HTMLDivElement).innerHTML || "").trim();
+              setDocHTML(html);
+            }}
+          />
           {(isLoading || loadError) && (
             <div className={styles.overlay}>
               <div className={styles.overlayContent}>
