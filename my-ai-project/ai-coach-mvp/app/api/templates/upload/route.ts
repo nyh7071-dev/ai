@@ -24,12 +24,8 @@ export async function POST(request: Request) {
   const filePath = join(uploadDir, fileName);
   await writeFile(filePath, buffer);
 
-  const baseUrl =
-    process.env.FILE_PUBLIC_BASE_URL ||
-    process.env.NEXT_PUBLIC_FILE_BASE_URL ||
-    request.headers.get("origin") ||
-    "";
-  const publicUrl = baseUrl ? `${baseUrl}/uploads/${fileName}` : `/uploads/${fileName}`;
+  const origin = request.headers.get("origin") || "";
+  const publicUrl = origin ? `${origin}/uploads/${fileName}` : `/uploads/${fileName}`;
 
   return new Response(JSON.stringify({ publicUrl }), {
     status: 200,
