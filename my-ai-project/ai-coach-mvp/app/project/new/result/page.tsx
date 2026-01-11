@@ -40,6 +40,11 @@ function WorkspaceImpl() {
 
   const previewRef = useRef<HTMLDivElement>(null);
   const pendingBufferRef = useRef<ArrayBuffer | null>(null);
+  const renderDocxPreviewRef = useRef<(arrayBuffer: ArrayBuffer) => Promise<void>>(async () => {});
+  const runDocxPreview = useCallback(
+    async (arrayBuffer: ArrayBuffer) => renderDocxPreviewRef.current(arrayBuffer),
+    []
+  );
   const [previewReady, setPreviewReady] = useState(false);
   const [docHTML, setDocHTML] = useState<string>("");
   const [loadError, setLoadError] = useState<string | null>(null);
@@ -70,6 +75,116 @@ function WorkspaceImpl() {
     return s;
   };
 
+  const uploadTemplateToStorage = useCallback(async (file: File) => {
+    const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
+    const supabaseKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
+    if (supabaseUrl && supabaseKey) {
+      const bucket = process.env.NEXT_PUBLIC_TEMPLATE_BUCKET || "docx-templates";
+      const { supabase } = await import("@/lib/supabase");
+      if (!supabase?.storage) throw new Error("Supabase storage client가 없습니다.");
+      const safeName = file.name.replace(/\s+/g, "_");
+      const path = `templates/${Date.now()}_${safeName}`;
+      const { error } = await supabase.storage.from(bucket).upload(path, file, {
+        cacheControl: "3600",
+        upsert: false,
+      });
+      if (error) throw error;
+      const { data } = supabase.storage.from(bucket).getPublicUrl(path);
+      if (!data?.publicUrl) throw new Error("공개 URL 생성 실패");
+      return data.publicUrl;
+    }
+
+    const formData = new FormData();
+    formData.append("file", file);
+    const res = await fetch("/api/templates/upload", {
+      method: "POST",
+      body: formData,
+    });
+    if (!res.ok) throw new Error("로컬 업로드 실패");
+    const data = (await res.json()) as { publicUrl?: string };
+    if (!data.publicUrl) throw new Error("로컬 공개 URL 생성 실패");
+    return data.publicUrl;
+  }, []);
+
+  const renderDocxPreviewImpl = useCallback(
+    async (arrayBuffer: ArrayBuffer) => {
+      if (!previewRef.current) {
+        pendingBufferRef.current = arrayBuffer;
+        return;
+      }
+      const { renderAsync } = await import("docx-preview");
+      previewRef.current.innerHTML = "";
+      await renderAsync(arrayBuffer, previewRef.current, previewRef.current, {
+        inWrapper: false,
+        ignoreWidth: false,
+        ignoreHeight: false,
+        ignoreFonts: false,
+      });
+      const html = normalizeTemplateHTML(previewRef.current.innerHTML || "").trim();
+      setDocHTML(html);
+    },
+    [normalizeTemplateHTML]
+  );
+  useEffect(() => {
+    renderDocxPreviewRef.current = renderDocxPreviewImpl;
+  }, [renderDocxPreviewImpl]);
+
+  const analyzeTemplateHTML = useCallback((html: string) => {
+    if (!html) return { headings: [], tableCount: 0, labeledFields: [] };
+    const parser = new DOMParser();
+    const doc = parser.parseFromString(html, "text/html");
+    const headings = Array.from(doc.querySelectorAll("h1,h2,h3,h4,h5,h6"))
+      .map((el) => el.textContent?.trim())
+      .filter(Boolean) as string[];
+    const tableCount = doc.querySelectorAll("table").length;
+    const labeledFields = Array.from(doc.querySelectorAll("p,li,td"))
+      .map((el) => el.textContent?.trim() || "")
+      .filter((text) => /[:：]$/.test(text) || /(작성|입력|성명|학번|날짜)/.test(text))
+      .slice(0, 16);
+    return { headings, tableCount, labeledFields };
+  }, []);
+
+  const applyLabelMappingToHtml = useCallback((html: string, mappings: LabelMapping[]) => {
+    if (!html || !mappings.length) return html;
+    const parser = new DOMParser();
+    const doc = parser.parseFromString(html, "text/html");
+    const labelMap = new Map(
+      mappings
+        .map((m) => ({
+          label: m.label?.trim(),
+          value: m.value?.trim(),
+        }))
+        .filter((m) => m.label && m.value) as { label: string; value: string }[]
+    );
+    if (!labelMap.size) return html;
+
+    const textNodes: Text[] = [];
+    const walker = doc.createTreeWalker(doc.body, NodeFilter.SHOW_TEXT);
+    while (walker.nextNode()) {
+      const node = walker.currentNode as Text;
+      if (node.nodeValue?.trim()) textNodes.push(node);
+    }
+
+    textNodes.forEach((node) => {
+      const raw = node.nodeValue || "";
+      const trimmed = raw.trim();
+      if (!trimmed) return;
+      const normalized = trimmed.replace(/\s+/g, " ");
+      for (const [label, value] of labelMap.entries()) {
+        const normalizedLabel = label.replace(/\s+/g, " ");
+        if (normalized === normalizedLabel) {
+          const span = doc.createElement("span");
+          span.textContent = ` ${value}`;
+          span.style.fontWeight = "600";
+          span.style.color = "#0f172a";
+          node.parentNode?.insertBefore(span, node.nextSibling);
+          labelMap.delete(label);
+          break;
+        }
+      }
+    });
+
+    return normalizeTemplateHTML(doc.body.innerHTML || "").trim();
   const getOfficeViewerUrl = useCallback((url: string) => {
     return `https://view.officeapps.live.com/op/embed.aspx?src=${encodeURIComponent(url)}`;
   }, []);
@@ -270,6 +385,7 @@ if (pdfjs.GlobalWorkerOptions) {
         }
 
         setDocHTML(nextHtml);
+        applyHtmlToPreview(nextHtml);
         sendHtmlToIframe(nextHtml);
         setMessages((prev) => [
           ...prev,
@@ -284,6 +400,7 @@ if (pdfjs.GlobalWorkerOptions) {
         setLoadingMessage(null);
       }
     },
+    [applyHtmlToPreview, applyLabelMappingToHtml, docHTML, templateAnalysis, type]
     [applyLabelMappingToHtml, docHTML, sendHtmlToIframe, templateAnalysis, type]
   );
 
@@ -295,6 +412,8 @@ if (pdfjs.GlobalWorkerOptions) {
     if (!previewReady || !pendingBufferRef.current) return;
     const buffer = pendingBufferRef.current;
     pendingBufferRef.current = null;
+    runDocxPreview(buffer);
+  }, [previewReady, runDocxPreview]);
     renderDocxPreview(buffer);
   }, [previewReady, renderDocxPreview]);
 
@@ -327,6 +446,7 @@ if (pdfjs.GlobalWorkerOptions) {
           }
         }
 
+        await runDocxPreview(buf);
         await renderDocxPreview(buf);
         const html = normalizeTemplateHTML(previewRef.current?.innerHTML || "").trim();
         if (!html) throw new Error("DOCX 렌더링 결과가 비어있습니다.");
@@ -334,6 +454,7 @@ if (pdfjs.GlobalWorkerOptions) {
         const analysis = analyzeTemplateHTML(html);
         setDocHTML(html);
         setTemplateAnalysis(analysis);
+        applyHtmlToPreview(html);
         sendHtmlToIframe(html);
         setOriginalDocxUrl(nextOriginalUrl);
         setViewMode(nextOriginalUrl ? "original" : "edit");
@@ -369,6 +490,13 @@ if (pdfjs.GlobalWorkerOptions) {
 
     run();
   }, [
+    type,
+    activeTemplateId,
+    analyzeTemplateHTML,
+    applyHtmlToPreview,
+    docHTML,
+    normalizeTemplateHTML,
+    runDocxPreview,
     frameReady,
     type,
     activeTemplateId,
@@ -391,6 +519,7 @@ if (pdfjs.GlobalWorkerOptions) {
 
       try {
         const buf = await file.arrayBuffer();
+        await runDocxPreview(buf);
         await renderDocxPreview(buf);
         const html = normalizeTemplateHTML(previewRef.current?.innerHTML || "").trim();
         if (!html) throw new Error("DOCX 렌더링 결과가 비어있습니다.");
@@ -398,6 +527,15 @@ if (pdfjs.GlobalWorkerOptions) {
         const analysis = analyzeTemplateHTML(html);
         setDocHTML(html);
         setTemplateAnalysis(analysis);
+        applyHtmlToPreview(html);
+
+        let publicUrl = "";
+        try {
+          publicUrl = await uploadTemplateToStorage(file);
+        } catch (uploadErr) {
+          console.warn("템플릿 업로드 실패. 원본 미리보기 제한됨", uploadErr);
+        }
+
         sendHtmlToIframe(html);
 
         let publicUrl = "";
@@ -425,6 +563,15 @@ if (pdfjs.GlobalWorkerOptions) {
         setLoadingMessage(null);
       }
     },
+    [
+      analyzeTemplateHTML,
+      router,
+      applyHtmlToPreview,
+      type,
+      uploadTemplateToStorage,
+      normalizeTemplateHTML,
+      runDocxPreview,
+    ]
     [loadDocxArrayBufferToHtml, analyzeTemplateHTML, router, sendHtmlToIframe, type]
   );
 
@@ -549,6 +696,16 @@ if (pdfjs.GlobalWorkerOptions) {
 
       <main className={styles.main}>
         <div className={styles.editorWrapper}>
+          <div
+            ref={previewRef}
+            className={styles.editorFrame}
+            contentEditable
+            suppressContentEditableWarning
+            onInput={(e) => {
+              const html = normalizeTemplateHTML((e.currentTarget as HTMLDivElement).innerHTML || "").trim();
+              setDocHTML(html);
+            }}
+          />
           {viewMode === "original" && viewerSrc ? (
             <iframe title="원본 미리보기" src={viewerSrc} className={styles.editorFrame} />
           ) : (
