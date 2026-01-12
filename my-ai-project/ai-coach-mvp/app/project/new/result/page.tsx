@@ -1,6 +1,6 @@
 "use client";
 
-import { Suspense, useCallback, useEffect, useRef, useState } from "react";
+import { Suspense, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import dynamic from "next/dynamic";
 import { getTemplateFromIDB, saveTemplateToIDB } from "@/lib/templateStore";
@@ -79,6 +79,8 @@ function WorkspaceImpl() {
     async (arrayBuffer: ArrayBuffer) => {
       // mammoth는 동적 import가 안전합니다.
       const mammoth = await import("mammoth");
+      const { value } = await mammoth.convertToHtml({ arrayBuffer });
+      return normalizeTemplateHTML(value || "").trim();
       const result = await mammoth.convertToHtml({ arrayBuffer });
       return normalizeTemplateHTML(result.value || "").trim();
     },
@@ -123,6 +125,16 @@ function WorkspaceImpl() {
         return;
       }
 
+      const previewHtml = await loadDocxArrayBufferToHtml(arrayBuffer);
+
+      previewRef.current.innerHTML = previewHtml;
+      setDocHTML(previewHtml);
+    },
+    [loadDocxArrayBufferToHtml]
+  );
+  useEffect(() => {
+    renderDocxPreviewRef.current = renderDocxPreviewImpl;
+  }, [renderDocxPreviewImpl]);
 
       // mammoth는 동적 import가 안전합니다.
       const mammoth = await import("mammoth");
@@ -135,6 +147,11 @@ function WorkspaceImpl() {
 
     },
     
+
+  const renderDocxPreview = useCallback(
+    async (arrayBuffer: ArrayBuffer) => renderDocxPreviewImpl(arrayBuffer),
+    [renderDocxPreviewImpl]
+  );
 
   const analyzeTemplateHTML = useCallback((html: string) => {
     if (!html) return { headings: [], tableCount: 0, labeledFields: [] };
