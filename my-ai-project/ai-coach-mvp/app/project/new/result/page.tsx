@@ -132,23 +132,9 @@ function WorkspaceImpl() {
       previewRef.current.innerHTML = previewHtml;
       setDocHTML(previewHtml);
 
-      // mammoth는 동적 import가 안전합니다.
-      const mammoth = await import("mammoth");
-      const result = await mammoth.convertToHtml({ arrayBuffer });
-      const previewHtml = normalizeTemplateHTML(result.value || "").trim();
-      previewRef.current.innerHTML = previewHtml;
-      setDocHTML(previewHtml);
-      const html = normalizeTemplateHTML(result.value || "").trim();
-      const html = await loadDocxArrayBufferToHtml(arrayBuffer);
-      previewRef.current.innerHTML = html;
-      setDocHTML(html);
 
     },
-    [loadDocxArrayBufferToHtml]
-  );
-  useEffect(() => {
-    renderDocxPreviewRef.current = renderDocxPreviewImpl;
-  }, [renderDocxPreviewImpl]);
+    
 
   const analyzeTemplateHTML = useCallback((html: string) => {
     if (!html) return { headings: [], tableCount: 0, labeledFields: [] };
@@ -213,12 +199,7 @@ function WorkspaceImpl() {
   }, []);
 
 
-  const loadDocxArrayBufferToHtml = useCallback(async (arrayBuffer: ArrayBuffer) => {
-    // mammoth는 동적 import가 안전합니다.
-    const mammoth = await import("mammoth");
-    const result = await mammoth.convertToHtml({ arrayBuffer });
-    return normalizeTemplateHTML(result.value || "").trim();
-  }, [normalizeTemplateHTML]);
+
 
   const extractPdfText = useCallback(async (file: File) => {
    const pdfjs = await import("pdfjs-dist/build/pdf.mjs");
