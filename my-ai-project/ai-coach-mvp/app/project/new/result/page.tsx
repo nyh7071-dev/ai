@@ -496,6 +496,7 @@ if (pdfjs.GlobalWorkerOptions) {
     applyHtmlToPreview,
     docHTML,
     normalizeTemplateHTML,
+    renderDocxPreview,
     runDocxPreview,
     frameReady,
     type,
@@ -536,6 +537,7 @@ if (pdfjs.GlobalWorkerOptions) {
           console.warn("템플릿 업로드 실패. 원본 미리보기 제한됨", uploadErr);
         }
 
+
         sendHtmlToIframe(html);
 
         let publicUrl = "";
@@ -570,6 +572,8 @@ if (pdfjs.GlobalWorkerOptions) {
       type,
       uploadTemplateToStorage,
       normalizeTemplateHTML,
+      renderDocxPreview,
+    ]
       runDocxPreview,
     ]
     [loadDocxArrayBufferToHtml, analyzeTemplateHTML, router, sendHtmlToIframe, type]
