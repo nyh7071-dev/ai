@@ -194,6 +194,13 @@ function WorkspaceImpl() {
     return `https://view.officeapps.live.com/op/embed.aspx?src=${encodeURIComponent(url)}`;
   }, []);
 
+  const loadDocxArrayBufferToHtml = useCallback(async (arrayBuffer: ArrayBuffer) => {
+    // mammoth는 동적 import가 안전합니다.
+    const mammoth = await import("mammoth");
+    const result = await mammoth.convertToHtml({ arrayBuffer });
+    return normalizeTemplateHTML(result.value || "").trim();
+  }, [normalizeTemplateHTML]);
+
   const extractPdfText = useCallback(async (file: File) => {
    const pdfjs = await import("pdfjs-dist/build/pdf.mjs");
 if (pdfjs.GlobalWorkerOptions) {
