@@ -122,6 +122,10 @@ function WorkspaceImpl() {
         pendingBufferRef.current = arrayBuffer;
         return;
       }
+      // mammoth는 동적 import가 안전합니다.
+      const mammoth = await import("mammoth");
+      const result = await mammoth.convertToHtml({ arrayBuffer });
+      const html = normalizeTemplateHTML(result.value || "").trim();
       const html = await loadDocxArrayBufferToHtml(arrayBuffer);
       previewRef.current.innerHTML = html;
       setDocHTML(html);
@@ -193,6 +197,7 @@ function WorkspaceImpl() {
   const getOfficeViewerUrl = useCallback((url: string) => {
     return `https://view.officeapps.live.com/op/embed.aspx?src=${encodeURIComponent(url)}`;
   }, []);
+
 
   const loadDocxArrayBufferToHtml = useCallback(async (arrayBuffer: ArrayBuffer) => {
     // mammoth는 동적 import가 안전합니다.
