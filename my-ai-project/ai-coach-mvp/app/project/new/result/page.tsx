@@ -81,6 +81,8 @@ function WorkspaceImpl() {
       const mammoth = await import("mammoth");
       const { value } = await mammoth.convertToHtml({ arrayBuffer });
       return normalizeTemplateHTML(value || "").trim();
+      const result = await mammoth.convertToHtml({ arrayBuffer });
+      return normalizeTemplateHTML(result.value || "").trim();
     },
     [normalizeTemplateHTML]
   );
@@ -133,6 +135,18 @@ function WorkspaceImpl() {
   useEffect(() => {
     renderDocxPreviewRef.current = renderDocxPreviewImpl;
   }, [renderDocxPreviewImpl]);
+
+      // mammoth는 동적 import가 안전합니다.
+      const mammoth = await import("mammoth");
+      const { value } = await mammoth.convertToHtml({ arrayBuffer });
+      const previewHtml = normalizeTemplateHTML(value || "").trim();
+
+      previewRef.current.innerHTML = previewHtml;
+      setDocHTML(previewHtml);
+
+
+    },
+    
 
   const renderDocxPreview = useCallback(
     async (arrayBuffer: ArrayBuffer) => renderDocxPreviewImpl(arrayBuffer),
@@ -200,6 +214,9 @@ function WorkspaceImpl() {
   const getOfficeViewerUrl = useCallback((url: string) => {
     return `https://view.officeapps.live.com/op/embed.aspx?src=${encodeURIComponent(url)}`;
   }, []);
+
+
+
 
   const extractPdfText = useCallback(async (file: File) => {
    const pdfjs = await import("pdfjs-dist/build/pdf.mjs");
