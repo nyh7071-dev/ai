@@ -122,6 +122,16 @@ function WorkspaceImpl() {
         pendingBufferRef.current = arrayBuffer;
         return;
       }
+
+
+      // mammoth는 동적 import가 안전합니다.
+      const mammoth = await import("mammoth");
+      const { value } = await mammoth.convertToHtml({ arrayBuffer });
+      const previewHtml = normalizeTemplateHTML(value || "").trim();
+
+      previewRef.current.innerHTML = previewHtml;
+      setDocHTML(previewHtml);
+
       // mammoth는 동적 import가 안전합니다.
       const mammoth = await import("mammoth");
       const result = await mammoth.convertToHtml({ arrayBuffer });
@@ -132,6 +142,7 @@ function WorkspaceImpl() {
       const html = await loadDocxArrayBufferToHtml(arrayBuffer);
       previewRef.current.innerHTML = html;
       setDocHTML(html);
+
     },
     [loadDocxArrayBufferToHtml]
   );
