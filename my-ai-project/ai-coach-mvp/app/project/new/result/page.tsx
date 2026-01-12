@@ -75,6 +75,16 @@ function WorkspaceImpl() {
     return s;
   };
 
+  const loadDocxArrayBufferToHtml = useCallback(
+    async (arrayBuffer: ArrayBuffer) => {
+      // mammoth는 동적 import가 안전합니다.
+      const mammoth = await import("mammoth");
+      const result = await mammoth.convertToHtml({ arrayBuffer });
+      return normalizeTemplateHTML(result.value || "").trim();
+    },
+    [normalizeTemplateHTML]
+  );
+
   const uploadTemplateToStorage = useCallback(async (file: File) => {
     const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
     const supabaseKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
@@ -112,18 +122,11 @@ function WorkspaceImpl() {
         pendingBufferRef.current = arrayBuffer;
         return;
       }
-      const { renderAsync } = await import("docx-preview");
-      previewRef.current.innerHTML = "";
-      await renderAsync(arrayBuffer, previewRef.current, previewRef.current, {
-        inWrapper: false,
-        ignoreWidth: false,
-        ignoreHeight: false,
-        ignoreFonts: false,
-      });
-      const html = normalizeTemplateHTML(previewRef.current.innerHTML || "").trim();
+      const html = await loadDocxArrayBufferToHtml(arrayBuffer);
+      previewRef.current.innerHTML = html;
       setDocHTML(html);
     },
-    [normalizeTemplateHTML]
+    [loadDocxArrayBufferToHtml]
   );
   useEffect(() => {
     renderDocxPreviewRef.current = renderDocxPreviewImpl;
