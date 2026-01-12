@@ -75,6 +75,16 @@ function WorkspaceImpl() {
     return s;
   };
 
+  const loadDocxArrayBufferToHtml = useCallback(
+    async (arrayBuffer: ArrayBuffer) => {
+      // mammoth는 동적 import가 안전합니다.
+      const mammoth = await import("mammoth");
+      const result = await mammoth.convertToHtml({ arrayBuffer });
+      return normalizeTemplateHTML(result.value || "").trim();
+    },
+    [normalizeTemplateHTML]
+  );
+
   const uploadTemplateToStorage = useCallback(async (file: File) => {
     const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
     const supabaseKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
@@ -113,6 +123,7 @@ function WorkspaceImpl() {
         return;
       }
 
+
       // mammoth는 동적 import가 안전합니다.
       const mammoth = await import("mammoth");
       const { value } = await mammoth.convertToHtml({ arrayBuffer });
@@ -120,8 +131,20 @@ function WorkspaceImpl() {
 
       previewRef.current.innerHTML = previewHtml;
       setDocHTML(previewHtml);
+
+      // mammoth는 동적 import가 안전합니다.
+      const mammoth = await import("mammoth");
+      const result = await mammoth.convertToHtml({ arrayBuffer });
+      const previewHtml = normalizeTemplateHTML(result.value || "").trim();
+      previewRef.current.innerHTML = previewHtml;
+      setDocHTML(previewHtml);
+      const html = normalizeTemplateHTML(result.value || "").trim();
+      const html = await loadDocxArrayBufferToHtml(arrayBuffer);
+      previewRef.current.innerHTML = html;
+      setDocHTML(html);
+
     },
-    [normalizeTemplateHTML]
+    [loadDocxArrayBufferToHtml]
   );
   useEffect(() => {
     renderDocxPreviewRef.current = renderDocxPreviewImpl;
@@ -188,6 +211,14 @@ function WorkspaceImpl() {
   const getOfficeViewerUrl = useCallback((url: string) => {
     return `https://view.officeapps.live.com/op/embed.aspx?src=${encodeURIComponent(url)}`;
   }, []);
+
+
+  const loadDocxArrayBufferToHtml = useCallback(async (arrayBuffer: ArrayBuffer) => {
+    // mammoth는 동적 import가 안전합니다.
+    const mammoth = await import("mammoth");
+    const result = await mammoth.convertToHtml({ arrayBuffer });
+    return normalizeTemplateHTML(result.value || "").trim();
+  }, [normalizeTemplateHTML]);
 
   const extractPdfText = useCallback(async (file: File) => {
    const pdfjs = await import("pdfjs-dist/build/pdf.mjs");
