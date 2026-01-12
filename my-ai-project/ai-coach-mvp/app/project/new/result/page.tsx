@@ -81,6 +81,10 @@ function WorkspaceImpl() {
       const mammoth = await import("mammoth");
       const { value } = await mammoth.convertToHtml({ arrayBuffer });
       return normalizeTemplateHTML(value || "").trim();
+
+      const result = await mammoth.convertToHtml({ arrayBuffer });
+      return normalizeTemplateHTML(result.value || "").trim();
+
     },
     [normalizeTemplateHTML]
   );
@@ -128,12 +132,75 @@ function WorkspaceImpl() {
         previewRef.current.innerHTML = previewHtml;
         setDocHTML(previewHtml);
       });
+      const previewHtml = await loadDocxArrayBufferToHtml(arrayBuffer);
+
+      previewRef.current.innerHTML = previewHtml;
+      setDocHTML(previewHtml);
     },
     [loadDocxArrayBufferToHtml]
   );
   useEffect(() => {
     renderDocxPreviewRef.current = renderDocxPreviewImpl;
   }, [renderDocxPreviewImpl]);
+
+  const renderDocxPreview = useCallback(
+    async (arrayBuffer: ArrayBuffer) => renderDocxPreviewImpl(arrayBuffer),
+    [renderDocxPreviewImpl]
+  );
+
+  const analyzeTemplateHTML = useCallback((html: string) => {
+    if (!html) return { headings: [], tableCount: 0, labeledFields: [] };
+    const parser = new DOMParser();
+    const doc = parser.parseFromString(html, "text/html");
+    const headings = Array.from(doc.querySelectorAll("h1,h2,h3,h4,h5,h6"))
+      .map((el) => el.textContent?.trim())
+      .filter(Boolean) as string[];
+    const tableCount = doc.querySelectorAll("table").length;
+    const labeledFields = Array.from(doc.querySelectorAll("p,li,td"))
+      .map((el) => el.textContent?.trim() || "")
+      .filter((text) => /[:：]$/.test(text) || /(작성|입력|성명|학번|날짜)/.test(text))
+      .slice(0, 16);
+    return { headings, tableCount, labeledFields };
+  }, []);
+
+  const applyLabelMappingToHtml = useCallback((html: string, mappings: LabelMapping[]) => {
+    if (!html || !mappings.length) return html;
+    const parser = new DOMParser();
+    const doc = parser.parseFromString(html, "text/html");
+    const labelMap = new Map(
+      mappings
+        .map((m) => ({
+          label: m.label?.trim(),
+          value: m.value?.trim(),
+        }))
+        .filter((m) => m.label && m.value) as { label: string; value: string }[]
+    );
+    if (!labelMap.size) return html;
+
+    const textNodes: Text[] = [];
+    const walker = doc.createTreeWalker(doc.body, NodeFilter.SHOW_TEXT);
+    while (walker.nextNode()) {
+      const node = walker.currentNode as Text;
+      if (node.nodeValue?.trim()) textNodes.push(node);
+    }
+      // mammoth는 동적 import가 안전합니다.
+      const mammoth = await import("mammoth");
+      const { value } = await mammoth.convertToHtml({ arrayBuffer });
+      const previewHtml = normalizeTemplateHTML(value || "").trim();
+
+      previewRef.current.innerHTML = previewHtml;
+      setDocHTML(previewHtml);
+
+    return normalizeTemplateHTML(doc.body.innerHTML || "").trim();
+  }, [normalizeTemplateHTML]);
+
+  const getOfficeViewerUrl = useCallback((url: string) => {
+    return `https://view.officeapps.live.com/op/embed.aspx?src=${encodeURIComponent(url)}`;
+  }, []);
+
+
+    },
+    
 
   const renderDocxPreview = useCallback(
     async (arrayBuffer: ArrayBuffer) => renderDocxPreviewImpl(arrayBuffer),
@@ -201,6 +268,9 @@ function WorkspaceImpl() {
   const getOfficeViewerUrl = useCallback((url: string) => {
     return `https://view.officeapps.live.com/op/embed.aspx?src=${encodeURIComponent(url)}`;
   }, []);
+
+
+
 
   const extractPdfText = useCallback(async (file: File) => {
    const pdfjs = await import("pdfjs-dist/build/pdf.mjs");
