@@ -400,8 +400,7 @@ if (pdfjs.GlobalWorkerOptions) {
         setLoadingMessage(null);
       }
     },
-    [applyHtmlToPreview, applyLabelMappingToHtml, docHTML, templateAnalysis, type]
-    [applyLabelMappingToHtml, docHTML, sendHtmlToIframe, templateAnalysis, type]
+    [applyHtmlToPreview, applyLabelMappingToHtml, docHTML, sendHtmlToIframe, templateAnalysis, type]
   );
 
   useEffect(() => {
@@ -413,9 +412,8 @@ if (pdfjs.GlobalWorkerOptions) {
     const buffer = pendingBufferRef.current;
     pendingBufferRef.current = null;
     runDocxPreview(buffer);
-  }, [previewReady, runDocxPreview]);
     renderDocxPreview(buffer);
-  }, [previewReady, renderDocxPreview]);
+  }, [previewReady, renderDocxPreview, runDocxPreview]);
 
   useEffect(() => {
     const key = `${type}::${activeTemplateId || "DEFAULT"}`;
@@ -498,13 +496,7 @@ if (pdfjs.GlobalWorkerOptions) {
     normalizeTemplateHTML,
     renderDocxPreview,
     runDocxPreview,
-    frameReady,
-    type,
-    activeTemplateId,
-    loadDocxArrayBufferToHtml,
-    analyzeTemplateHTML,
     sendHtmlToIframe,
-    docHTML,
   ]);
 
   const onUploadDocxTemplateHere = useCallback(
@@ -529,15 +521,6 @@ if (pdfjs.GlobalWorkerOptions) {
         setDocHTML(html);
         setTemplateAnalysis(analysis);
         applyHtmlToPreview(html);
-
-        let publicUrl = "";
-        try {
-          publicUrl = await uploadTemplateToStorage(file);
-        } catch (uploadErr) {
-          console.warn("템플릿 업로드 실패. 원본 미리보기 제한됨", uploadErr);
-        }
-
-
         sendHtmlToIframe(html);
 
         let publicUrl = "";
@@ -567,16 +550,16 @@ if (pdfjs.GlobalWorkerOptions) {
     },
     [
       analyzeTemplateHTML,
-      router,
       applyHtmlToPreview,
-      type,
-      uploadTemplateToStorage,
       normalizeTemplateHTML,
       renderDocxPreview,
-    ]
+      router,
       runDocxPreview,
+      saveTemplateToIDB,
+      sendHtmlToIframe,
+      type,
+      uploadTemplateToStorage,
     ]
-    [loadDocxArrayBufferToHtml, analyzeTemplateHTML, router, sendHtmlToIframe, type]
   );
 
   // PDF 업로드는 네 기존 자동채움 로직을 여기 붙이면 됩니다.
