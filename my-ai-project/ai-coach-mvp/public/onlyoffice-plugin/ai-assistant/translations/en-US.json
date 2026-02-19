@@ -1,0 +1,18 @@
+{
+  "pluginName": "AI Assistant",
+  "pluginDescription": "Real-time AI document filling",
+  "connecting": "Connecting...",
+  "connected": "Connected",
+  "disconnected": "Disconnected",
+  "error": "Error",
+  "retry": "Retry",
+  "close": "Close",
+  "loading": "Loading...",
+  "success": "Success",
+  "failed": "Failed",
+  "contentControlNotFound": "Content Control not found",
+  "fillSuccess": "Auto-fill succeeded",
+  "fillFailed": "Auto-fill failed",
+  "verifying": "Verifying...",
+  "verified": "Verified"
+}

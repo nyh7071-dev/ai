@@ -102,6 +102,32 @@ export default function MainUploadPage() {
           >
             💬 ChatGPT
           </div>
+          <div
+            onClick={() => router.push("/project/form-editor")}
+            style={{
+              padding: "12px 16px",
+              color: "#9ca3af",
+              borderRadius: "12px",
+              cursor: "pointer",
+              marginTop: "8px",
+            }}
+          >
+            📝 PDF 양식 편집기
+          </div>
+          <div
+            onClick={() => router.push("/project/docx-editor")}
+            style={{
+              padding: "12px 16px",
+              backgroundColor: "#dcfce7",
+              color: "#16a34a",
+              borderRadius: "12px",
+              cursor: "pointer",
+              marginTop: "8px",
+              fontWeight: "bold",
+            }}
+          >
+            📄 DOCX 양식 편집기 (NEW)
+          </div>
         </nav>
       </aside>
 

@@ -1,0 +1,21 @@
+{
+  "name": "AI Assistant",
+  "guid": "asc.{F5F8F5F8-F5F8-F5F8-F5F8-F5F8F5F8F5F8}",
+  "version": "1.0.8",
+  "onlyofficeScheme": true,
+  "variations": [
+    {
+      "description": "Real-time AI document filling",
+      "url": "index_20260206_01.html",
+      "icons": ["resources/icon.svg"],
+      "isViewer": false,
+      "EditorsSupport": ["word"],
+      "type": "background",
+      "isVisual": true,
+      "isInsideMode": false,
+      "initDataType": "none",
+      "events": ["onDocumentContentReady"],
+      "buttons": []
+    }
+  ]
+}

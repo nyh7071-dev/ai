@@ -1,10 +1,22 @@
+@import url('https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@100;300;400;500;700;900&display=swap');
+
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
 
+/* 한글 폰트 기본 설정 */
+* {
+  font-family: 'Noto Sans KR', 'Malgun Gothic', '맑은 고딕', 'Apple SD Gothic Neo', 'Nanum Gothic', sans-serif !important;
+}
+
+html, body {
+  margin: 0;
+  padding: 0;
+}
+
 .paper-page {
   background: white;
-  width: 210mm; /* A4 사이즈 */
+  width: 210mm;
   min-height: 297mm;
   padding: 20mm;
   margin: 0 auto;
@@ -12,4 +24,3 @@
   outline: none;
   color: black;
 }
-body { outline: 8px solid red !important; }

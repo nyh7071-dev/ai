@@ -1,0 +1,14 @@
+# AI temp
+.claude/
+tmpclaude-*/
+tmpclaude-*-cwd/
+**/tmpclaude-*/
+**/tmpclaude-*-cwd/
+
+# Windows oddities
+nul
+
+tmpclaude-*
+**/tmpclaude-*
+.claude/
+**/.claude/

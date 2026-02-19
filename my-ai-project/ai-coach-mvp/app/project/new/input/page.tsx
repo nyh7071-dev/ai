@@ -1,9 +1,18 @@
 'use client';
+import { Suspense } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { useEffect, useState } from 'react';
 import { supabase } from '@/lib/supabase';
 
 export default function InputPage() {
+  return (
+    <Suspense fallback={<div className="min-h-screen bg-gray-50 p-8 flex items-center justify-center">로딩 중...</div>}>
+      <InputPageContent />
+    </Suspense>
+  );
+}
+
+function InputPageContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const templateId = searchParams.get('templateId');
@@ -45,12 +54,12 @@ export default function InputPage() {
       // Supabase에 저장하고 ID를 받아옴
       const { data, error } = await supabase
         .from('project')
-        .insert([{ 
+        .insert([{
           template_id: templateId,
           subject: formData.subject,
           assertion: formData.assertion,
           keywords: formData.keywords,
-          title: formData.subject 
+          title: formData.subject
         }])
         .select().single();
 
@@ -76,7 +85,7 @@ export default function InputPage() {
     <div className="min-h-screen bg-gray-50 p-8 text-black">
       <div className="max-w-2xl mx-auto bg-white p-8 rounded-2xl shadow-sm border border-gray-200">
         <div className="flex items-center justify-between mb-6">
-          <h1 className="text-2xl font-bold">🖋️ 과제 내용 입력</h1>
+          <h1 className="text-2xl font-bold">과제 내용 입력</h1>
           <button
             type="button"
             onClick={loadPreviousData}
@@ -100,7 +109,7 @@ export default function InputPage() {
             <input required className="w-full border p-3 rounded-lg" onChange={(e)=>setFormData({...formData, keywords: e.target.value})} />
           </div>
           <button type="submit" disabled={loading} className="w-full bg-blue-600 text-white py-4 rounded-xl font-bold">
-            {loading ? '저장 중...' : '다음 단계로 이동 →'}
+            {loading ? '저장 중...' : '다음 단계로 이동'}
           </button>
         </form>
       </div>

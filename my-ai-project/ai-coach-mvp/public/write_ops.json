@@ -1,0 +1,68 @@
+[
+  {
+    "xmlPath": "document:table5:r1:c1",
+    "value": "예: 굿즈/소모품 구입",
+    "key": "재료비__document:table5:r1:c1",
+    "slot": "재료비"
+  },
+  {
+    "xmlPath": "document:table5:r2:c1",
+    "value": "예: 마케팅 소재 제작(카드뉴스/영상 등)",
+    "key": "slot_c1__document:table5:r2:c1",
+    "slot": "slot_c1"
+  },
+  {
+    "xmlPath": "document:table5:r2:c2",
+    "value": "10,000,000",
+    "key": "amount_krw__document:table5:r2:c2",
+    "slot": "amount_krw"
+  },
+  {
+    "xmlPath": "document:table5:r3:c1",
+    "value": "예: 외주 개발/디자인 용역",
+    "key": "외주용역비__document:table5:r3:c1",
+    "slot": "외주용역비"
+  },
+  {
+    "xmlPath": "document:table5:r3:c2",
+    "value": "예: 외주 개발/디자인 용역",
+    "key": "외주용역비__document:table5:r3:c2",
+    "slot": "외주용역비"
+  },
+  {
+    "xmlPath": "document:table5:r4:c2",
+    "value": "예: 결제수수료/플랫폼 수수료",
+    "key": "지급수수료__document:table5:r4:c2",
+    "slot": "지급수수료"
+  },
+  {
+    "xmlPath": "document:table6:r1:c1",
+    "value": "예: 굿즈/소모품 구입",
+    "key": "재료비__document:table6:r1:c1",
+    "slot": "재료비"
+  },
+  {
+    "xmlPath": "document:table6:r2:c1",
+    "value": "예: 마케팅 소재 제작(카드뉴스/영상 등)",
+    "key": "slot_c1__document:table6:r2:c1",
+    "slot": "slot_c1"
+  },
+  {
+    "xmlPath": "document:table6:r3:c1",
+    "value": "예: 외주 개발/디자인 용역",
+    "key": "외주용역비__document:table6:r3:c1",
+    "slot": "외주용역비"
+  },
+  {
+    "xmlPath": "document:table6:r3:c2",
+    "value": "예: 외주 개발/디자인 용역",
+    "key": "외주용역비__document:table6:r3:c2",
+    "slot": "외주용역비"
+  },
+  {
+    "xmlPath": "document:table6:r4:c2",
+    "value": "예: 결제수수료/플랫폼 수수료",
+    "key": "지급수수료__document:table6:r4:c2",
+    "slot": "지급수수료"
+  }
+]

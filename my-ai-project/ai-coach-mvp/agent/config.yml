@@ -1,0 +1,37 @@
+﻿repo:
+  base_branch: "main"
+  branch_prefix: "agent"
+  max_loops: 4
+  create_draft_pr: true
+
+gate:
+  # ✅ C: 너 프로젝트 실제 커맨드
+  commands:
+    - "npm run lint"
+    - "npm run build"
+
+models:
+  planner:
+    provider: "openai_compat"
+    model: "gpt-5.2"
+  architect:
+    provider: "anthropic"
+    model: "claude-3-7-sonnet"
+  implementer:
+    provider: "openai_compat"
+    model: "gpt-5.2"
+  reviewer:
+    provider: "anthropic"
+    model: "claude-3-7-sonnet"
+  fixer:
+    provider: "openai_compat"
+    model: "gpt-5.2"
+
+providers:
+  openai_compat:
+    base_url: "https://api.openai.com/v1"
+    api_key_env: "OPENAI_API_KEY"
+  anthropic:
+    base_url: "https://api.anthropic.com"
+    api_key_env: "ANTHROPIC_API_KEY"
+    anthropic_version: "2023-06-01"

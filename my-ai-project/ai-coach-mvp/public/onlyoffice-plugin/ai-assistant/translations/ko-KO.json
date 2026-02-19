@@ -1,0 +1,18 @@
+{
+  "pluginName": "AI 어시스턴트",
+  "pluginDescription": "실시간 AI 문서 자동 채우기",
+  "connecting": "연결 중...",
+  "connected": "연결됨",
+  "disconnected": "연결 끊김",
+  "error": "오류",
+  "retry": "재시도",
+  "close": "닫기",
+  "loading": "로딩 중...",
+  "success": "성공",
+  "failed": "실패",
+  "contentControlNotFound": "컨텐츠 컨트롤을 찾을 수 없습니다",
+  "fillSuccess": "자동 채우기 성공",
+  "fillFailed": "자동 채우기 실패",
+  "verifying": "검증 중...",
+  "verified": "검증 완료"
+}
