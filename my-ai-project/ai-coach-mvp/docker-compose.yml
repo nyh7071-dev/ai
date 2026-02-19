@@ -1,0 +1,44 @@
+version: '3.8'
+
+services:
+  onlyoffice:
+    image: onlyoffice/documentserver:latest
+    container_name: onlyoffice-documentserver
+    ports:
+      - "8080:80"
+    environment:
+      - JWT_ENABLED=false
+      - WOPI_ENABLED=true
+      - ALLOW_META_IP_ADDRESS=true
+      - ALLOW_PRIVATE_IP_ADDRESS=true
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    restart: unless-stopped
+    volumes:
+      - onlyoffice_data:/var/www/onlyoffice/Data
+      - onlyoffice_logs:/var/log/onlyoffice
+      - "./sdkjs-plugins/{F5F8F5F8-F5F8-F5F8-F5F8-F5F8F5F8F5F8}:/var/www/onlyoffice/documentserver/sdkjs-plugins/{F5F8F5F8-F5F8-F5F8-F5F8-F5F8F5F8F5F8}"
+    networks:
+      - office-network
+    depends_on:
+      - fileserver
+
+  fileserver:
+    image: nginx:alpine
+    container_name: onlyoffice-fileserver
+    ports:
+      - "8888:80"
+    volumes:
+      - ./uploads:/usr/share/nginx/html/uploads:ro
+      - ./nginx-fileserver.conf:/etc/nginx/conf.d/default.conf:ro
+    restart: unless-stopped
+    networks:
+      - office-network
+
+networks:
+  office-network:
+    driver: bridge
+
+volumes:
+  onlyoffice_data:
+  onlyoffice_logs:

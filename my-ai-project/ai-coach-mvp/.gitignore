@@ -67,3 +67,14 @@ Thumbs.db
 .vscode/
 .idea/
 
+# temp files
+tmp/
+uploads/
+*.sock
+test-docker-libreoffice.js
+.env
+logs/
+.agent.patch
+.env
+logs/
+.agent.patch
