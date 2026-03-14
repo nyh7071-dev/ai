@@ -1,9 +1,13 @@
 import { randomUUID } from "node:crypto";
+import { tmpdir } from "node:os";
 import { mkdir, readdir, readFile, writeFile } from "node:fs/promises";
 import { basename, join } from "node:path";
 import { getSupabaseAdmin } from "@/lib/server/supabaseAdmin";
 
-const UPLOAD_DIR = join(process.cwd(), ".data", "uploads");
+const UPLOAD_DIR =
+  process.env.VERCEL || process.env.NODE_ENV === "production"
+    ? join(tmpdir(), "repot-ai", "uploads")
+    : join(process.cwd(), ".data", "uploads");
 
 function sanitizeId(value: string) {
   return basename(value);
@@ -69,11 +73,35 @@ async function readFromSupabaseStorage(fileId: string) {
     .eq("id", fileId)
     .single<{ storage_key: string; original_name: string }>();
 
-  if (rowError || !row?.storage_key || row.storage_key === fileId) {
+  if (!rowError && row?.storage_key && row.storage_key !== fileId) {
+    const { data, error } = await admin.client.storage.from(admin.bucket).download(row.storage_key);
+    if (error || !data) {
+      console.warn("supabase storage download failed:", error?.message);
+      return null;
+    }
+
+    return {
+      fileId,
+      fileName: row.original_name || row.storage_key,
+      buffer: Buffer.from(await data.arrayBuffer()),
+    };
+  }
+
+  const { data: candidates, error: listError } = await admin.client.storage.from(admin.bucket).list("", {
+    search: fileId,
+  });
+
+  if (listError || !candidates?.length) {
+    if (listError) {
+      console.warn("supabase storage list failed:", listError.message);
+    }
     return null;
   }
 
-  const { data, error } = await admin.client.storage.from(admin.bucket).download(row.storage_key);
+  const match = candidates.find((entry) => entry.name === fileId || entry.name.startsWith(`${fileId}.`));
+  if (!match?.name) return null;
+
+  const { data, error } = await admin.client.storage.from(admin.bucket).download(match.name);
   if (error || !data) {
     console.warn("supabase storage download failed:", error?.message);
     return null;
@@ -81,7 +109,7 @@ async function readFromSupabaseStorage(fileId: string) {
 
   return {
     fileId,
-    fileName: row.original_name || row.storage_key,
+    fileName: match.name,
     buffer: Buffer.from(await data.arrayBuffer()),
   };
 }
