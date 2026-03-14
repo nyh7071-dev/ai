@@ -18,7 +18,7 @@ interface TemplateDB extends DBSchema {
 const DB_NAME = "repot-templates";
 const STORE = "templates";
 
-let dbPromise: Promise<ReturnType<typeof openDB<TemplateDB>>> | null = null;
+let dbPromise: ReturnType<typeof openDB<TemplateDB>> | null = null;
 
 function getDb() {
   if (dbPromise) return dbPromise;

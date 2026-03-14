@@ -18,21 +18,22 @@ export async function POST(request: Request) {
 
   const arrayBuffer = await file.arrayBuffer();
   const buffer = Buffer.from(arrayBuffer);
-  const safeName = file.name.replace(/\s+/g, "_");
-  const saved = await saveUploadedFile(buffer, safeName);
+  const saved = await saveUploadedFile(buffer, file.name);
   const accessToken = createFileAccessToken(saved.fileId);
 
   const baseUrl =
     process.env.FILE_PUBLIC_BASE_URL ||
-    process.env.NEXT_PUBLIC_FILE_BASE_URL ||
     request.headers.get("origin") ||
-    "";
-  const publicUrl = baseUrl
-    ? `${baseUrl}/api/onlyoffice/file/${saved.fileId}?token=${encodeURIComponent(accessToken)}`
-    : `/api/onlyoffice/file/${saved.fileId}?token=${encodeURIComponent(accessToken)}`;
+    "http://localhost:3000";
 
-  return new Response(JSON.stringify({ publicUrl, accessToken }), {
-    status: 200,
-    headers: { "Content-Type": "application/json" },
-  });
+  return new Response(
+    JSON.stringify({
+      fileId: saved.fileId,
+      fileName: saved.fileName,
+      storageKey: saved.storageKey,
+      accessToken,
+      url: `${baseUrl}/api/onlyoffice/file/${saved.fileId}?token=${encodeURIComponent(accessToken)}`,
+    }),
+    { status: 200, headers: { "Content-Type": "application/json" } }
+  );
 }

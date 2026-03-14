@@ -1,4 +1,4 @@
-/* 1. 기본 스타일 및 초기화: 깨짐 방지 핵심 */
+/* 1. 기본 스타일 및 초기화 */
 :global(*) {
   box-sizing: border-box !important;
   margin: 0;
@@ -9,7 +9,7 @@
   height: 100%;
   overflow: hidden;
   font-family: "Pretendard Variable", -apple-system, sans-serif;
-  background-color: #f1f5f9; /* 첫 번째 페이지 배경색과 통일 */
+  background-color: #f4f4f5;
   -webkit-font-smoothing: antialiased;
 }
 
@@ -19,162 +19,715 @@
   height: 100vh;
 }
 
-/* 2. 사이드바: 320px 슬림 가로폭 유지 */
+/* 2. 사이드바 */
 .sidebar {
-  width: 320px;
-  min-width: 320px;
-  max-width: 320px;
+  width: 420px;
+  min-width: 420px;
+  max-width: 420px;
   height: 100%;
   background: #ffffff;
   display: flex;
   flex-direction: column;
-  border-right: 1px solid #e2e8f0;
-  box-shadow: 10px 0 30px rgba(0, 0, 0, 0.02);
+  border-right: 1px solid #e4e4e7;
 }
 
-/* 3. 헤더: 높이 최소화 + 강력한 폰트 */
+/* 3. 헤더: 미니멀 블랙 */
 .sidebarHeader {
-  padding: 20px 20px 14px;
-  background: #0f172a; /* 다크 테마 적용 */
+  padding: 20px 24px;
+  background: #18181b;
   color: #ffffff;
   flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
 }
 
-.sidebarHeader h1 {
-  font-size: 19px;
+.sidebarHeaderTitle {
+  font-size: 18px;
   font-weight: 900;
-  line-height: 1.1;
-  letter-spacing: -0.04em;
-  display: flex;
-  flex-direction: column;
-  gap: 6px; /* 텍스트와 배지 겹침 방지 */
+  font-style: italic;
+  letter-spacing: 0.02em;
+  color: #2563eb;
 }
 
 .sidebarHeaderMeta {
-  display: inline-flex;
-  width: fit-content;
-  padding: 3px 8px;
+  padding: 3px 10px;
   border-radius: 4px;
-  background: rgba(59, 130, 246, 0.3);
-  color: #93c5fd;
-  font-size: 10px;
-  font-weight: 800;
-  text-transform: uppercase;
+  background: rgba(255, 255, 255, 0.12);
+  color: rgba(255, 255, 255, 0.7);
+  font-size: 11px;
+  font-weight: 600;
 }
 
-/* 4. 업로드 섹션: 버튼 겹침 해결 */
+/* 4. 업로드 섹션 */
 .uploadSection {
-  padding: 16px 20px;
+  padding: 16px 24px;
   flex-shrink: 0;
-  border-bottom: 1px solid #f1f5f9;
+  border-bottom: 1px solid #f4f4f5;
+}
+
+.sectionLabel {
+  font-size: 11px;
+  font-weight: 700;
+  color: #a1a1aa;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  margin-bottom: 10px;
 }
 
 .uploadButtons {
   display: flex;
   width: 100%;
   padding: 3px;
-  background: #f8fafc;
-  border: 1px solid #e2e8f0;
+  background: #f4f4f5;
+  border: 1px solid #e4e4e7;
   border-radius: 10px;
-  gap: 4px;
+  gap: 3px;
 }
 
 .docxUpload, .pdfUpload {
   flex: 1;
-  min-width: 0; /* 텍스트가 박스를 뚫고 나가는 것 방지 */
+  min-width: 0;
   height: 38px;
   border-radius: 7px;
-  font-size: 11px;
+  font-size: 12px;
   font-weight: 700;
   display: flex;
   align-items: center;
   justify-content: center;
   text-align: center;
   cursor: pointer;
-  transition: all 0.2s;
+  transition: all 0.15s ease;
   line-height: 1.2;
 }
 
-/* DOCX: 비활성 느낌 제거 및 세련된 화이트 */
 .docxUpload {
   background: #ffffff;
-  border: 1px solid #cbd5e1;
-  color: #475569;
+  border: 1px solid #e4e4e7;
+  color: #3f3f46;
+}
+
+.docxUpload:hover {
+  background: #fafafa;
+  border-color: #d4d4d8;
 }
 
 .pdfUpload {
-  background: #2563eb; /* 포인트 블루 */
+  background: #18181b;
   color: #ffffff;
   border: none;
 }
 
-/* 5. 채팅 메시지 리스트 */
+.pdfUpload:hover {
+  background: #27272a;
+}
+
+.pdfUpload:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+/* 5. 액션 버튼 영역 */
+.actionSection {
+  padding: 16px 24px;
+  flex-shrink: 0;
+  border-bottom: 1px solid #f4f4f5;
+  display: flex;
+  gap: 8px;
+}
+
+.actionPrimary {
+  flex: 1;
+  height: 40px;
+  border-radius: 8px;
+  font-size: 13px;
+  font-weight: 700;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  cursor: pointer;
+  transition: all 0.15s ease;
+  border: none;
+  background: #18181b;
+  color: #ffffff;
+}
+
+.actionPrimary:hover {
+  background: #27272a;
+}
+
+.actionPrimary:disabled {
+  opacity: 0.3;
+  cursor: not-allowed;
+}
+
+.actionSecondary {
+  flex: 1;
+  height: 40px;
+  border-radius: 8px;
+  font-size: 13px;
+  font-weight: 700;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  cursor: pointer;
+  transition: all 0.15s ease;
+  background: #ffffff;
+  border: 1.5px solid #e4e4e7;
+  color: #3f3f46;
+}
+
+.actionSecondary:hover {
+  background: #fafafa;
+  border-color: #d4d4d8;
+}
+
+.actionSecondary:disabled {
+  opacity: 0.3;
+  cursor: not-allowed;
+}
+
+/* 슬롯 선택 섹션 */
+.slotSection {
+  padding: 0 24px 12px;
+  flex-shrink: 0;
+}
+
+.slotSectionHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.slotBadge {
+  font-size: 11px;
+  font-weight: 600;
+  color: #71717a;
+  background: #f4f4f5;
+  padding: 2px 8px;
+  border-radius: 4px;
+  display: inline-block;
+}
+
+.slotToggleBtn {
+  font-size: 11px;
+  font-weight: 700;
+  color: #3f3f46;
+  background: #f4f4f5;
+  border: 1px solid #e4e4e7;
+  border-radius: 6px;
+  padding: 4px 10px;
+  cursor: pointer;
+  transition: all 0.15s ease;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.slotToggleBtn:hover {
+  background: #e4e4e7;
+}
+
+.slotToggleBtnActive {
+  background: #18181b;
+  color: #ffffff;
+  border-color: #18181b;
+}
+
+.slotToggleBtnActive:hover {
+  background: #27272a;
+}
+
+.slotCount {
+  background: #2563eb;
+  color: #ffffff;
+  font-size: 10px;
+  font-weight: 800;
+  padding: 1px 5px;
+  border-radius: 8px;
+  min-width: 16px;
+  text-align: center;
+}
+
+/* 선택된 슬롯 칩 (패널 닫힌 상태) */
+.selectedChips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  margin-top: 8px;
+  align-items: center;
+}
+
+.selectedChip {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  padding: 2px 8px;
+  background: #eff6ff;
+  border: 1px solid #bfdbfe;
+  border-radius: 4px;
+  font-size: 10px;
+  font-weight: 600;
+  color: #2563eb;
+  white-space: nowrap;
+}
+
+.clearAllBtn {
+  font-size: 10px;
+  font-weight: 600;
+  color: #a1a1aa;
+  background: none;
+  border: none;
+  cursor: pointer;
+  padding: 2px 4px;
+  white-space: nowrap;
+}
+
+.clearAllBtn:hover {
+  color: #ef4444;
+}
+
+/* 슬롯 선택 패널 */
+.slotPanel {
+  margin-top: 8px;
+  border: 1px solid #e4e4e7;
+  border-radius: 8px;
+  background: #fafafa;
+  overflow: hidden;
+}
+
+.slotSearchInput {
+  width: 100%;
+  padding: 8px 12px;
+  border: none;
+  border-bottom: 1px solid #e4e4e7;
+  font-size: 12px;
+  font-family: inherit;
+  color: #18181b;
+  background: #ffffff;
+  outline: none;
+}
+
+.slotSearchInput::placeholder {
+  color: #a1a1aa;
+}
+
+.slotPanelActions {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 6px 12px;
+  border-bottom: 1px solid #f4f4f5;
+}
+
+.slotPanelCount {
+  font-size: 11px;
+  font-weight: 600;
+  color: #2563eb;
+}
+
+.slotList {
+  max-height: 280px;
+  overflow-y: auto;
+  scrollbar-width: thin;
+  scrollbar-color: #e4e4e7 transparent;
+}
+
+.slotList::-webkit-scrollbar {
+  width: 4px;
+}
+
+.slotList::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.slotList::-webkit-scrollbar-thumb {
+  background: #e4e4e7;
+  border-radius: 2px;
+}
+
+.slotGroup {
+  border-bottom: 1px solid #f4f4f5;
+}
+
+.slotGroup:last-child {
+  border-bottom: none;
+}
+
+.slotGroupHeader {
+  font-size: 10px;
+  font-weight: 700;
+  color: #a1a1aa;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+  padding: 8px 12px 4px;
+  background: #f4f4f5;
+  position: sticky;
+  top: 0;
+  z-index: 1;
+}
+
+.slotItem {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  padding: 6px 12px;
+  cursor: pointer;
+  transition: background 0.1s ease;
+  user-select: none;
+  -webkit-user-select: none;
+}
+
+.slotItem:hover {
+  background: #f0f0f2;
+}
+
+.slotItemSelected {
+  background: #eff6ff;
+}
+
+.slotItemSelected:hover {
+  background: #dbeafe;
+}
+
+.slotCheckbox {
+  margin-top: 2px;
+  accent-color: #2563eb;
+  flex-shrink: 0;
+}
+
+.slotItemContent {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+}
+
+.slotItemLabel {
+  font-size: 12px;
+  font-weight: 600;
+  color: #27272a;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.slotItemPreview {
+  font-size: 10px;
+  color: #71717a;
+  line-height: 1.4;
+  margin-top: 1px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* 구조적 슬롯 (헤더, 라벨 등) */
+.slotItemStructural {
+  opacity: 0.55;
+}
+
+.slotItemStructural:hover {
+  opacity: 0.85;
+}
+
+.structuralTag {
+  display: inline-block;
+  font-size: 9px;
+  font-weight: 700;
+  color: #a1a1aa;
+  background: #f4f4f5;
+  border: 1px solid #e4e4e7;
+  border-radius: 3px;
+  padding: 0 4px;
+  margin-right: 4px;
+  vertical-align: middle;
+  line-height: 1.5;
+}
+
+/* 슬롯 인라인 편집 */
+.slotEditPanel {
+  padding: 6px 8px 8px;
+  background: #f8fafc;
+  border: 1px solid #e2e8f0;
+  border-top: none;
+  border-radius: 0 0 6px 6px;
+  margin-top: -1px;
+}
+
+.slotEditTextarea {
+  width: 100%;
+  min-height: 60px;
+  padding: 6px 8px;
+  font-size: 11px;
+  font-family: inherit;
+  border: 1px solid #cbd5e1;
+  border-radius: 4px;
+  resize: vertical;
+  outline: none;
+  line-height: 1.5;
+  box-sizing: border-box;
+}
+
+.slotEditTextarea:focus {
+  border-color: #2563eb;
+  box-shadow: 0 0 0 2px rgba(37, 99, 235, 0.15);
+}
+
+.slotEditActions {
+  display: flex;
+  gap: 6px;
+  margin-top: 6px;
+  justify-content: flex-end;
+}
+
+.slotEditSave {
+  padding: 3px 10px;
+  font-size: 11px;
+  font-weight: 600;
+  color: white;
+  background: #2563eb;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+}
+
+.slotEditSave:hover {
+  background: #1d4ed8;
+}
+
+.slotEditCancel {
+  padding: 3px 10px;
+  font-size: 11px;
+  font-weight: 600;
+  color: #64748b;
+  background: white;
+  border: 1px solid #e2e8f0;
+  border-radius: 4px;
+  cursor: pointer;
+}
+
+.slotEditCancel:hover {
+  background: #f1f5f9;
+}
+
+/* 타겟 칩 (채팅 입력 영역) */
+.chipTarget {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 4px 10px;
+  background: #eff6ff;
+  border: 1px solid #bfdbfe;
+  border-radius: 6px;
+  font-size: 11px;
+  font-weight: 700;
+  color: #2563eb;
+  white-space: nowrap;
+}
+
+/* 6. 채팅 메시지 리스트 */
 .messageList {
   flex: 1;
   overflow-y: auto;
-  padding: 16px 20px;
+  padding: 16px 24px;
   display: flex;
   flex-direction: column;
-  gap: 12px;
+  gap: 8px;
+  scrollbar-width: thin;
+  scrollbar-color: #e4e4e7 transparent;
 }
 
-/* 6. 하단 입력부: 화살표 제거된 슬림 캡슐 */
+.messageList::-webkit-scrollbar {
+  width: 4px;
+}
+
+.messageList::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.messageList::-webkit-scrollbar-thumb {
+  background: #e4e4e7;
+  border-radius: 2px;
+}
+
+.msgBubble {
+  padding: 10px 14px;
+  border-radius: 12px;
+  font-size: 13px;
+  line-height: 1.6;
+  max-width: 95%;
+  word-break: break-word;
+}
+
+.msgAi {
+  background: #f4f4f5;
+  color: #27272a;
+  align-self: flex-start;
+  border-bottom-left-radius: 4px;
+}
+
+.msgUser {
+  background: #18181b;
+  color: #fafafa;
+  align-self: flex-end;
+  border-bottom-right-radius: 4px;
+}
+
+/* 7. 소스 파일 칩 */
+.chipList {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  padding: 0 4px 8px;
+}
+
+.chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 4px 10px;
+  background: #f4f4f5;
+  border: 1px solid #e4e4e7;
+  border-radius: 6px;
+  font-size: 11px;
+  font-weight: 600;
+  color: #3f3f46;
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  transition: all 0.15s ease;
+}
+
+.chip:hover {
+  background: #e4e4e7;
+}
+
+.chipDelete {
+  background: none;
+  border: none;
+  cursor: pointer;
+  font-size: 14px;
+  line-height: 1;
+  color: #a1a1aa;
+  padding: 0 2px;
+  transition: color 0.15s;
+}
+
+.chipDelete:hover {
+  color: #ef4444;
+}
+
+/* 8. 하단 입력부: ChatGPT / Claude 스타일 */
 .chatForm {
-  padding: 12px 20px 24px;
-  background: #fff;
-  border-top: 1px solid #f1f5f9;
+  padding: 16px 24px 24px;
   flex-shrink: 0;
+}
+
+.chatInputWrapper {
+  position: relative;
+  background: #f4f4f5;
+  border: 1.5px solid #e4e4e7;
+  border-radius: 20px;
+  transition: all 0.2s ease;
+  display: flex;
+  flex-direction: column;
+}
+
+.chatInputWrapper:focus-within {
+  border-color: #a1a1aa;
+  background: #ffffff;
+  box-shadow: 0 0 0 3px rgba(0, 0, 0, 0.04);
 }
 
 .chatInput {
   width: 100%;
-  height: 44px; /* 슬림 높이 */
-  border-radius: 22px;
-  border: 1.5px solid #e2e8f0;
-  padding: 11px 20px;
+  min-height: 48px;
+  max-height: 120px;
+  border: none;
+  border-radius: 20px;
+  padding: 14px 56px 14px 20px;
   font-family: inherit;
   font-size: 14px;
-  color: #334155;
-  background: #f8fafc;
+  color: #18181b;
+  background: transparent;
   resize: none;
-  transition: all 0.2s;
-  
-  /* 스크롤바 화살표 제거 */
-  -ms-overflow-style: none; /* IE/Edge */
-  scrollbar-width: none; /* Firefox */
+  -ms-overflow-style: none;
+  scrollbar-width: none;
 }
 
-/* Chrome/Safari 스크롤바 제거 */
 .chatInput::-webkit-scrollbar {
   display: none;
 }
 
 .chatInput:focus {
   outline: none;
-  border-color: #2563eb;
-  background: #fff;
-  box-shadow: 0 4px 12px rgba(37, 99, 235, 0.08);
 }
 
-.chatButton {
-  margin-top: 10px;
-  width: 100%;
-  height: 44px;
-  border-radius: 22px;
-  background: #0f172a; /* 헤더와 통일감 */
+.chatInput::placeholder {
+  color: #a1a1aa;
+}
+
+.chatSendBtn {
+  position: absolute;
+  right: 8px;
+  bottom: 8px;
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  background: #18181b;
   color: #ffffff;
-  font-size: 14px;
-  font-weight: 700;
   border: none;
   cursor: pointer;
-  transition: all 0.2s;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.15s ease;
+  flex-shrink: 0;
 }
 
-/* 7. 메인 워크스페이스: 첫 번째 페이지 카드 감성 */
+.chatSendBtn:hover {
+  background: #27272a;
+  transform: scale(1.05);
+}
+
+.chatSendBtn svg {
+  width: 18px;
+  height: 18px;
+}
+
+/* 9. 로딩 인디케이터 */
+.loadingIndicator {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 12px;
+  color: #71717a;
+  margin-top: 8px;
+  font-weight: 600;
+}
+
+.loadingDot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: #71717a;
+  animation: pulse 1.2s ease-in-out infinite;
+}
+
+@keyframes pulse {
+  0%, 100% { opacity: 0.3; transform: scale(0.8); }
+  50% { opacity: 1; transform: scale(1); }
+}
+
+/* 10. 메인 워크스페이스 */
 .main {
   flex: 1;
-  background: #f1f5f9;
-  padding: 30px;
+  background: #f4f4f5;
+  padding: 16px;
   display: flex;
   justify-content: center;
   align-items: center;
@@ -183,7 +736,7 @@
 
 .editorWrapper {
   width: 100%;
-  max-width: 850px;
+  max-width: 1200px;
   height: 100%;
   position: relative;
   display: flex;
@@ -194,14 +747,14 @@
   height: 100%;
   background: #ffffff;
   border-radius: 12px;
-  border: 1px solid #e2e8f0;
-  box-shadow: 0 4px 24px rgba(0, 0, 0, 0.04);
+  border: 1px solid #e4e4e7;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.04);
 }
 
 .overlay {
   position: absolute;
   inset: 0;
-  background: rgba(15, 23, 42, 0.45);
+  background: rgba(24, 24, 27, 0.5);
   backdrop-filter: blur(2px);
   display: flex;
   align-items: center;
@@ -211,14 +764,14 @@
 
 .overlayContent {
   text-align: center;
-  color: #f8fafc;
+  color: #fafafa;
   display: flex;
   flex-direction: column;
   gap: 8px;
   padding: 18px 24px;
   border-radius: 12px;
-  background: rgba(15, 23, 42, 0.6);
-  box-shadow: 0 12px 30px rgba(15, 23, 42, 0.35);
+  background: rgba(24, 24, 27, 0.7);
+  box-shadow: 0 12px 30px rgba(0, 0, 0, 0.3);
 }
 
 .overlayTitle {
@@ -228,5 +781,5 @@
 
 .overlaySubtitle {
   font-size: 13px;
-  color: rgba(226, 232, 240, 0.9);
+  color: rgba(250, 250, 250, 0.7);
 }
