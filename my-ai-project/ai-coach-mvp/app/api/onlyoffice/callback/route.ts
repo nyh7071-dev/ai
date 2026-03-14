@@ -1,5 +1,7 @@
-import { writeFile } from "node:fs/promises";
-import { join, basename } from "node:path";
+import { basename } from "node:path";
+import { verifyFileAccessToken } from "@/lib/server/fileAccessToken";
+import { validateProductionEnv } from "@/lib/server/runtimeConfig";
+import { readUploadedFile, saveUploadedFile } from "@/lib/server/uploadStore";
 
 export const runtime = "nodejs";
 
@@ -10,13 +12,22 @@ type OnlyOfficeCallbackPayload = {
 };
 
 export async function POST(request: Request) {
+  validateProductionEnv();
   const { searchParams } = new URL(request.url);
-  const fileParam = searchParams.get("file");
-  const safeFileName = fileParam ? basename(fileParam) : "";
+  const fileParam = searchParams.get("fileId");
+  const token = searchParams.get("token") || "";
+  const safeFileId = fileParam ? basename(fileParam) : "";
 
-  if (!safeFileName) {
-    return new Response(JSON.stringify({ error: "file is required" }), {
+  if (!safeFileId) {
+    return new Response(JSON.stringify({ error: "fileId is required" }), {
       status: 400,
+      headers: { "Content-Type": "application/json" },
+    });
+  }
+
+  if (!verifyFileAccessToken(token, safeFileId)) {
+    return new Response(JSON.stringify({ error: "unauthorized" }), {
+      status: 401,
       headers: { "Content-Type": "application/json" },
     });
   }
@@ -32,9 +43,14 @@ export async function POST(request: Request) {
         headers: { "Content-Type": "application/json" },
       });
     }
+
+    const current = await readUploadedFile(safeFileId);
     const arrayBuffer = await res.arrayBuffer();
-    const filePath = join(process.cwd(), "public", "uploads", safeFileName);
-    await writeFile(filePath, Buffer.from(arrayBuffer));
+    await saveUploadedFile(
+      Buffer.from(arrayBuffer),
+      current?.fileName || `${safeFileId}.docx`,
+      safeFileId
+    );
   }
 
   return new Response(JSON.stringify({ error: 0 }), {

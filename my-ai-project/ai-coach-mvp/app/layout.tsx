@@ -1,5 +1,6 @@
 import "./globals.css";
 import type { Metadata } from "next";
+import AuthGuard from "@/components/AuthGuard";
 
 export const metadata: Metadata = {
   title: "Repot AI",
@@ -15,7 +16,7 @@ export default function RootLayout({
   return (
     <html lang="ko">
       <body className="antialiased" suppressHydrationWarning>
-        {children}
+        <AuthGuard>{children}</AuthGuard>
       </body>
     </html>
   );
