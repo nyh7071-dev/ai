@@ -10,6 +10,24 @@ function LoginContent() {
   const [isCompletingLogin, setIsCompletingLogin] = useState(false);
 
   useEffect(() => {
+    // Redirect if already logged in
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      if (session) {
+        window.location.href = "/";
+      }
+    });
+
+    // Listen for auth state changes (handles implicit flow via hash)
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
+      if ((event === "SIGNED_IN" || event === "TOKEN_REFRESHED") && session) {
+        window.location.href = "/";
+      }
+    });
+
+    return () => subscription.unsubscribe();
+  }, []);
+
+  useEffect(() => {
     const code = searchParams.get("code");
     if (!code) return;
 
@@ -32,7 +50,7 @@ function LoginContent() {
     return () => {
       cancelled = true;
     };
-  }, [router, searchParams]);
+  }, [searchParams]);
 
   const handleGoogleLogin = async () => {
     const { data, error } = await supabase.auth.signInWithOAuth({
