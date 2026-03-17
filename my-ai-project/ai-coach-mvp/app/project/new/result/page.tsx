@@ -1019,7 +1019,8 @@ function WorkspaceImpl() {
                                 <input
                                   type="checkbox"
                                   checked={selectedSlotKeys.has(s.key)}
-                                  onChange={() => toggleSlotKey(s.key)}
+                                  onChange={() => {}}
+                                  onMouseDown={(e) => e.stopPropagation()}
                                   className={styles.slotCheckbox}
                                   tabIndex={-1}
                                 />
