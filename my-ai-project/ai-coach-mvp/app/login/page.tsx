@@ -35,15 +35,20 @@ function LoginContent() {
   }, [router, searchParams]);
 
   const handleGoogleLogin = async () => {
-    const { error } = await supabase.auth.signInWithOAuth({
+    const { data, error } = await supabase.auth.signInWithOAuth({
       provider: "google",
       options: {
         redirectTo: `${window.location.origin}/auth/callback`,
+        skipBrowserRedirect: true,
       },
     });
     if (error) {
       console.error("signInWithOAuth error:", error);
       alert(`로그인 오류: ${error.message}`);
+      return;
+    }
+    if (data?.url) {
+      window.location.href = data.url;
     }
   };
 
