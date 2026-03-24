@@ -22,6 +22,8 @@ interface OnlyOfficeEditorProps {
   mode?: "view" | "edit";
   style?: React.CSSProperties;
   className?: string;
+  /** 문서가 저장 완료됐을 때 호출 (dirty → clean 전환) */
+  onSaved?: () => void;
 }
 
 const ONLYOFFICE_URL =
@@ -40,10 +42,14 @@ export default function OnlyOfficeEditor({
   mode = "view",
   style,
   className,
+  onSaved,
 }: OnlyOfficeEditorProps) {
   const containerRef = useRef<HTMLDivElement>(null);
   const editorRef = useRef<{ destroyEditor?: () => void } | null>(null);
   const scriptLoadedRef = useRef(false);
+  // onSaved 최신 참조 유지 (클로저 stale 방지)
+  const onSavedRef = useRef(onSaved);
+  useEffect(() => { onSavedRef.current = onSaved; }, [onSaved]);
 
   useEffect(() => {
     if (!fileUrl || !containerRef.current) return;
@@ -99,6 +105,15 @@ export default function OnlyOfficeEditor({
             compactToolbar: true,
             hideRightMenu: true,
             toolbarNoTabs: true,
+          },
+        },
+        events: {
+          // data=true: 변경 있음(dirty), data=false: 저장됨(clean)
+          onDocumentStateChange: (event: { data: boolean }) => {
+            if (!event.data) {
+              // 문서가 저장 완료 상태로 전환됨
+              onSavedRef.current?.();
+            }
           },
         },
         height: "100%",

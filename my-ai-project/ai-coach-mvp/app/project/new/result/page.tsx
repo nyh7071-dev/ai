@@ -115,6 +115,8 @@ function WorkspaceImpl() {
   const [editorAccessToken, setEditorAccessToken] = useState("");
   const [editorFileName, setEditorFileName] = useState("");
   const [editorKey, setEditorKey] = useState("");
+  // 저장 완료 대기를 위한 Promise resolver
+  const savedResolverRef = useRef<(() => void) | null>(null);
 
   // UI states
   const [messages, setMessages] = useState<ChatMsg[]>([
@@ -762,6 +764,15 @@ function WorkspaceImpl() {
     []
   );
 
+  /* ─── OnlyOffice 저장 완료 콜백 ─── */
+  const onEditorSaved = useCallback(() => {
+    // 대기 중인 download resolver가 있으면 resolve
+    if (savedResolverRef.current) {
+      savedResolverRef.current();
+      savedResolverRef.current = null;
+    }
+  }, []);
+
   /* ─── 다운로드 ─── */
 
   const onDownload = useCallback(async () => {
@@ -770,7 +781,19 @@ function WorkspaceImpl() {
     setIsLoading(true);
     setLoadingMessage("저장 중...");
     try {
-      // 1) OnlyOffice에 forceSave 요청 → callback이 서버 파일 업데이트
+      // 1) 저장 완료를 기다리는 Promise 등록 (max 10초 타임아웃)
+      const savedPromise = new Promise<void>((resolve) => {
+        savedResolverRef.current = resolve;
+        // 10초 내에 onDocumentStateChange(false)가 안 오면 강제 진행
+        setTimeout(() => {
+          if (savedResolverRef.current) {
+            savedResolverRef.current = null;
+            resolve();
+          }
+        }, 10000);
+      });
+
+      // 2) OnlyOffice에 forceSave 요청
       const fsRes = await fetch("/api/onlyoffice/forcesave", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -782,10 +805,10 @@ function WorkspaceImpl() {
       });
       if (!fsRes.ok) throw new Error("forceSave 실패");
 
-      // 2) callback 처리 대기 (OnlyOffice → 서버 저장까지 여유)
-      await new Promise((r) => setTimeout(r, 4000));
+      // 3) OnlyOffice가 실제로 저장 완료할 때까지 대기
+      await savedPromise;
 
-      // 3) 서버에서 최신 파일 fetch
+      // 4) 서버에서 최신 파일 fetch
       setLoadingMessage("다운로드 중...");
       const fileRes = await fetch(
         `/api/onlyoffice/file/${encodeURIComponent(editorFileId)}?token=${encodeURIComponent(editorAccessToken)}`
@@ -806,6 +829,7 @@ function WorkspaceImpl() {
       console.error("다운로드 실패:", err);
       alert("다운로드에 실패했습니다. 잠시 후 다시 시도해주세요.");
     } finally {
+      savedResolverRef.current = null;
       setIsLoading(false);
       setLoadingMessage(null);
     }
@@ -1175,6 +1199,7 @@ function WorkspaceImpl() {
               documentKey={editorKey}
               mode="edit"
               className={styles.editorFrame}
+              onSaved={onEditorSaved}
             />
           ) : (
             <div
