@@ -499,8 +499,11 @@ function WorkspaceImpl() {
 
         // 2) DOCX 채우기
         setLoadingMessage("DOCX에 내용 삽입 중...");
+        // targetKeys가 있으면 선택된 슬롯만 ops에 포함 (전체 재적용 방지)
+        const targetKeySet = targetKeys ? new Set(targetKeys) : null;
         const ops = results
           .map((r) => {
+            if (targetKeySet && !targetKeySet.has(r.key)) return null;
             const slot = slots.find((s) => s.key === r.key);
             if (!slot) return null;
             return { key: r.key, xmlPath: slot.xmlPath, value: r.value };
@@ -761,18 +764,52 @@ function WorkspaceImpl() {
 
   /* ─── 다운로드 ─── */
 
-  const onDownload = useCallback(() => {
-    if (!docxBuffer) return;
-    const blob = new Blob([docxBuffer], {
-      type: "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
-    });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement("a");
-    a.href = url;
-    a.download = editorFileName || "document.docx";
-    a.click();
-    URL.revokeObjectURL(url);
-  }, [docxBuffer, editorFileName]);
+  const onDownload = useCallback(async () => {
+    if (!editorFileId || !editorAccessToken || !editorKey) return;
+
+    setIsLoading(true);
+    setLoadingMessage("저장 중...");
+    try {
+      // 1) OnlyOffice에 forceSave 요청 → callback이 서버 파일 업데이트
+      const fsRes = await fetch("/api/onlyoffice/forcesave", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          fileId: editorFileId,
+          accessToken: editorAccessToken,
+          documentKey: editorKey,
+        }),
+      });
+      if (!fsRes.ok) throw new Error("forceSave 실패");
+
+      // 2) callback 처리 대기 (OnlyOffice → 서버 저장까지 여유)
+      await new Promise((r) => setTimeout(r, 1500));
+
+      // 3) 서버에서 최신 파일 fetch
+      setLoadingMessage("다운로드 중...");
+      const fileRes = await fetch(
+        `/api/onlyoffice/file/${encodeURIComponent(editorFileId)}?token=${encodeURIComponent(editorAccessToken)}`
+      );
+      if (!fileRes.ok) throw new Error("파일 다운로드 실패");
+
+      const arrayBuffer = await fileRes.arrayBuffer();
+      const blob = new Blob([arrayBuffer], {
+        type: "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+      });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = editorFileName || "document.docx";
+      a.click();
+      URL.revokeObjectURL(url);
+    } catch (err) {
+      console.error("다운로드 실패:", err);
+      alert("다운로드에 실패했습니다. 잠시 후 다시 시도해주세요.");
+    } finally {
+      setIsLoading(false);
+      setLoadingMessage(null);
+    }
+  }, [editorFileId, editorAccessToken, editorKey, editorFileName]);
 
   /* ─── 자동 저장 (디바운스 2초) ─── */
 
@@ -916,7 +953,7 @@ function WorkspaceImpl() {
             type="button"
             className={styles.actionSecondary}
             onClick={onDownload}
-            disabled={!docxBuffer}
+            disabled={!editorFileId || isLoading}
           >
             다운로드
           </button>
