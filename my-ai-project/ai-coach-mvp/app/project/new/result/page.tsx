@@ -783,7 +783,7 @@ function WorkspaceImpl() {
       if (!fsRes.ok) throw new Error("forceSave 실패");
 
       // 2) callback 처리 대기 (OnlyOffice → 서버 저장까지 여유)
-      await new Promise((r) => setTimeout(r, 1500));
+      await new Promise((r) => setTimeout(r, 4000));
 
       // 3) 서버에서 최신 파일 fetch
       setLoadingMessage("다운로드 중...");
