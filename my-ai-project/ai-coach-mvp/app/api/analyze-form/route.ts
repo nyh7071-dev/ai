@@ -563,6 +563,10 @@ export async function POST(req: Request) {
     const slotMap = new Map(slots.map(s => [s.key, s]));
     const prevMap = new Map((previousResults ?? []).map(r => [r.key, r.value]));
 
+    // 완전 교체 요청 감지: "다른", "새로운", "아예", "완전히" 등의 키워드가 있으면
+    // AI가 현재값을 참고하지 않고 완전히 새로운 내용을 생성하도록 유도
+    const isCompleteReplaceRequest = /다른|새로운?|아예|완전히|바꿔|교체|새\s*사례|다른\s*사례|다른\s*예시|새\s*예시|다르게|전혀/.test(requestText);
+
     // targetSlotKeys가 있으면 사용자가 직접 선택한 슬롯 → 최우선 필터
     const hasTargetKeys = Array.isArray(targetSlotKeys) && targetSlotKeys.length > 0;
     const targetKeySet = hasTargetKeys ? new Set(targetSlotKeys) : null;
@@ -610,7 +614,10 @@ export async function POST(req: Request) {
       const originalPart = original && original !== displayValue
         ? `\n  원본: "${original.substring(0, 80)}"`
         : "";
-      const preview = displayValue.substring(0, 80) + (displayValue.length > 80 ? "..." : "");
+      // 완전 교체 요청이면 현재값 대신 "완전히 새로운 내용으로 교체" 안내
+      const preview = isCompleteReplaceRequest
+        ? "(현재값 무시 — 완전히 새로운 내용으로 작성할 것)"
+        : displayValue.substring(0, 80) + (displayValue.length > 80 ? "..." : "");
       const line = `- key="${slot.key}" | 라벨="${label}" | 종류=${kind}${originalPart}\n  현재값: "${preview}"`;
 
       return { key: slot.key, score, line };
@@ -668,6 +675,11 @@ export async function POST(req: Request) {
           "=== 사업 정보 (소스 텍스트) ===",
           source || "(없음 - 소스가 없으면 사용자 요청의 문맥을 참고하여 적절한 내용으로 수정하세요)",
           "",
+          ...(isCompleteReplaceRequest ? [
+            "🚨 완전 교체 요청: 현재값을 절대 참고하지 마세요!",
+            "현재값과 완전히 다른 새로운 사례/예시/내용을 처음부터 창작하세요.",
+            "비슷한 표현, 유사한 구조도 금지. 주제·소재·표현 모두 달라야 합니다.",
+          ] : []),
           ...(targetKeySet ? [
             `⚠️ 매우 중요: 사용자가 아래 ${targetKeySet.size}개 슬롯을 직접 선택했습니다. 이 슬롯들만 수정하세요!`,
             `선택된 슬롯 키: ${Array.from(targetKeySet).join(", ")}`,
